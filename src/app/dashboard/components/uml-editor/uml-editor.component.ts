@@ -1,26 +1,30 @@
-// dashboard/components/uml-editor.component.ts
+// dashboard/components/uml-editor/uml-editor.component.ts
 import { Component, ViewChild, OnInit, ViewEncapsulation } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
-import { SharedModule } from '../../shared/shared.module';
+import { SharedModule } from '../../../shared/shared.module';
 import { 
-  DiagramComponent, 
-  SymbolPaletteComponent,
-  NodeModel,
-  ConnectorModel,
-  PaletteModel,
-  SymbolInfo,
-  MarginModel,
-  UmlClassifierShapeModel,
-  IDragEnterEventArgs,
-  Connector,
-  DiagramContextMenuService,
-  PrintAndExportService,
-  BpmnDiagramsService,
-  UndoRedoService,
-  SnappingService
+    DiagramComponent, 
+    SymbolPaletteComponent,
+    NodeModel,
+    ConnectorModel,
+    PaletteModel,
+    SymbolInfo,
+    MarginModel,
+    UmlClassifierShapeModel,
+    IDragEnterEventArgs,
+    Connector,
+    DiagramContextMenuService,
+    PrintAndExportService,
+    BpmnDiagramsService,
+    UndoRedoService,
+    SnappingService,
+    ISelectionChangeEventArgs,
+    LayoutModel,
+    HierarchicalTreeService 
 } from '@syncfusion/ej2-angular-diagrams';
 import { ExpandMode } from '@syncfusion/ej2-navigations';
+import type { Selector } from '@syncfusion/ej2-diagrams'; 
 
 @Component({
   selector: 'app-uml-editor',
@@ -31,129 +35,28 @@ import { ExpandMode } from '@syncfusion/ej2-navigations';
     PrintAndExportService,
     BpmnDiagramsService,
     UndoRedoService,
-    SnappingService
+    SnappingService,
+    HierarchicalTreeService
   ],
   encapsulation: ViewEncapsulation.None,
-  template: `
-    <style>
-      .control-section {
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100vw;
-        height: 100vh;
-        background: white;
-        z-index: 1000;
-        display: flex;
-        flex-direction: column;
-        overflow: hidden;
-      }
-      
-      .sb-mobile-palette {
-        width: 320px;
-        height: calc(100vh - 120px);
-        float: left;
-        border: 1px solid rgba(0, 0, 0, 0.12);
-        overflow-y: auto;
-      }
-      
-      .sb-mobile-diagram {
-        width: calc(100vw - 340px);
-        height: calc(100vh - 120px);
-        float: left;
-        border: 1px solid rgba(0, 0, 0, 0.12);
-        border-left: none;
-      }
-      
-      .uml-header {
-        background: white;
-        padding: 15px;
-        border-bottom: 1px solid #e0e0e0;
-        height: 90px;
-        flex-shrink: 0;
-        z-index: 1001;
-        position: relative;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-      }
-      
-      .editor-content {
-        flex: 1;
-        overflow: hidden;
-        display: flex;
-      }
-      
-      .btn {
-        padding: 8px 16px;
-        margin-right: 8px;
-        border: none;
-        border-radius: 4px;
-        cursor: pointer;
-        font-size: 14px;
-      }
-      
-      .btn-primary { background: #2196F3; color: white; }
-      .btn-success { background: #4CAF50; color: white; }
-      .btn-warning { background: #FF9800; color: white; }
-      .btn-info { background: #00BCD4; color: white; }
-      .btn-danger { background: #f44336; color: white; }
-    </style>
-    
-    <div class="control-section">
-      <!-- Header con botones -->
-      <div class="uml-header">
-        <h2 style="margin: 0 0 10px 0;">UML Class Diagram Editor</h2>
-        <div>
-          <button class="btn btn-primary" (click)="addNewClass()">Add Class</button>
-          <button class="btn btn-success" (click)="addMethod()">Add Method</button>
-          <button class="btn btn-warning" (click)="addAttribute()">Add Attribute</button>
-          <button class="btn btn-info" (click)="fitToPage()">Fit to Page</button>
-          <button class="btn" style="background: #9C27B0; color: white;" (click)="showAttributeTable()">📋 Attribute Table</button>
-          <button class="btn btn-danger" (click)="closeEditor()" style="float: right;">✕ Cerrar Editor</button>
-        </div>
-      </div>
-      
-      <!-- Área principal del diagrama -->
-      <div class="editor-content">
-        <div class="sb-mobile-palette">
-          <h4 style="text-align: center; padding: 10px; margin: 0; background: #f5f5f5; border-bottom: 1px solid #e0e0e0;">
-            UML Shapes
-          </h4>
-          <ejs-symbolpalette 
-            id="symbolpalette" 
-            [expandMode]="expandMode" 
-            [palettes]="palettes" 
-            [getSymbolInfo]="getSymbolInfo" 
-            width="100%" 
-            height="calc(100% - 50px)" 
-            [symbolHeight]="90"
-            [symbolWidth]="90" 
-            [symbolMargin]="symbolMargin" 
-            [getNodeDefaults]="getSymbolDefaults">
-          </ejs-symbolpalette>
-        </div>
-        
-        <div class="sb-mobile-diagram">
-          <ejs-diagram 
-            #diagram 
-            id="diagram" 
-            width="100%" 
-            height="100%" 
-            [getNodeDefaults]="getNodeDefaults"
-            [getConnectorDefaults]="getConnectorDefaults" 
-            [setNodeTemplate]="setNodeTemplate" 
-            [nodes]="nodes" 
-            [connectors]="connectors" 
-            (created)="created()" 
-            (dragEnter)="dragEnter($event)">
-          </ejs-diagram>
-        </div>
-      </div>
-    </div>
-  `
+  templateUrl: './uml-editor.component.html',
+  styleUrl: './uml-editor.component.scss'
 })
 export class UmlEditorComponent implements OnInit {
   @ViewChild('diagram') diagram!: DiagramComponent;
   @ViewChild('symbolpalette') symbolPalette!: SymbolPaletteComponent;
+
+  public layout: LayoutModel = { type: 'HierarchicalTree', orientation: 'TopToBottom' };
+
+  public created(): void {
+    this.diagram.layout = this.layout;
+    this.diagram.doLayout();
+    this.diagram.fitToPage();
+  }
+  
+  autolayout(){
+    this.diagram.doLayout();
+  }
 
   public expandMode: ExpandMode = 'Multiple';
   
@@ -184,40 +87,40 @@ export class UmlEditorComponent implements OnInit {
           },
         },
         // Interface shape basado en documentación oficial
-        {
-          id: 'Interface',
-          style: {
-            fill: '#26A0DA',
-          }, 
-          borderColor: 'white',
-          shape: {
-            type: 'UmlClassifier',
-            interfaceShape: {
-              name: "Bank Account",
-            },
-            classifier: 'Interface'
-          },
-        },
+        // {
+        //   id: 'Interface',
+        //   style: {
+        //     fill: '#26A0DA',
+        //   }, 
+        //   borderColor: 'white',
+        //   shape: {
+        //     type: 'UmlClassifier',
+        //     interfaceShape: {
+        //       name: "Bank Account",
+        //     },
+        //     classifier: 'Interface'
+        //   },
+        // },
         // Enumeration shape basado en documentación oficial
-        {
-          id: 'Enumeration',
-          style: {
-            fill: '#26A0DA',
-          }, 
-          borderColor: 'white',
-          shape: {
-            type: 'UmlClassifier',
-            enumerationShape: {
-              name: 'AccountType',
-              members: [
-                {
-                  name: 'Checking Account', style: {}
-                },
-              ]
-            },
-            classifier: 'Enumeration'
-          },
-        },
+        // {
+        //   id: 'Enumeration',
+        //   style: {
+        //     fill: '#26A0DA',
+        //   }, 
+        //   borderColor: 'white',
+        //   shape: {
+        //     type: 'UmlClassifier',
+        //     enumerationShape: {
+        //       name: 'AccountType',
+        //       members: [
+        //         {
+        //           name: 'Checking Account', style: {}
+        //         },
+        //       ]
+        //     },
+        //     classifier: 'Enumeration'
+        //   },
+        // },
       ]
     },
     {
@@ -441,6 +344,8 @@ export class UmlEditorComponent implements OnInit {
 
   selectedNodeId: string | null = null;
 
+  showExportMenu = false;
+
   constructor(private router: Router) {}
 
   ngOnInit() {
@@ -453,13 +358,13 @@ export class UmlEditorComponent implements OnInit {
     return obj;
   }
 
-  // Set the default values of connectors - from official example
-  public getConnectorDefaults(connector: ConnectorModel): ConnectorModel {
-    return connector;
-  }
-
-  public created(): void {
-    this.diagram.fitToPage();
+  public getConnectorDefaults(c: ConnectorModel): ConnectorModel {
+    // Estilo base
+    c.type = 'Orthogonal';
+    c.style = { strokeWidth:1.5, strokeColor:'#64748b' }; // slate-500
+    c.targetDecorator = { width:10, height:10, style:{ fill:'#fff', strokeColor:'#64748b' } };
+    (c as any).shape = (c as any).shape || { type:'UmlClassifier', relationship:'Association' };
+    return c;
   }
 
   public dragEnter(arg: IDragEnterEventArgs): void {
@@ -537,54 +442,61 @@ export class UmlEditorComponent implements OnInit {
   }
 
   addMethod() {
-    if (this.selectedNodeId && this.diagram) {
-      const node = this.diagram.getObject(this.selectedNodeId) as NodeModel;
-      if (node && node.shape && (node.shape as any).classifier === 'Class') {
-        const method = {
-          name: 'newMethod',
-          type: 'void'
-        };
-        
-        this.diagram.addChildToUmlNode(node, method, 'Method');
-        console.log('Added method to:', this.selectedNodeId);
-      }
-    } else {
-      console.log('Please select a UML Class first');
-    }
+    const id = this.selectedNodeId;
+    if(!id){ alert('Selecciona una clase primero'); return; }
+    const node = this.diagram.getObject(id) as NodeModel;
+    const method = { name:'newMethod', type:'void', parameters:[{name:'p', type:'String'}] };
+    this.diagram.addChildToUmlNode(node, method, 'Method');
   }
 
   addAttribute() {
-    if (this.selectedNodeId) {
-      const node = this.diagram.getObject(this.selectedNodeId) as NodeModel;
-      if (node && node.shape && (node.shape as UmlClassifierShapeModel).type === 'UmlClassifier') {
-        // Prompt user for attribute details
-        const attributeName = prompt('Enter attribute name:', 'newAttribute') || 'newAttribute';
-        const attributeType = prompt('Enter attribute type:', 'String') || 'String';
-        const attributeScope = prompt('Enter scope (public/private/protected):', 'public') || 'public';
-        
-        const attribute = {
-          name: attributeName,
-          type: attributeType,
-          scope: attributeScope,
-          style: { color: "black" }
-        };
-        
-        this.diagram.addChildToUmlNode(node, attribute, 'Attribute');
-        console.log(`Added attribute "${attributeName}: ${attributeType}" to:`, this.selectedNodeId);
-      } else {
-        alert('Please select a UML Class or Interface first');
-      }
-    } else {
-      alert('Please select a UML Class or Interface first');
-    }
+    const id = this.selectedNodeId;
+    if(!id){ alert('Selecciona una clase o interfaz'); return; }
+    const node = this.diagram.getObject(id) as NodeModel;
+    const attribute = { name:'newAttribute', type:'String', scope:'public' };
+    this.diagram.addChildToUmlNode(node, attribute, 'Attribute');
   }
 
-  fitToPage() {
-    this.diagram.fitToPage();
+  // Helpers para cambiar tipo de conectores:
+  setInheritance(conn: ConnectorModel){
+    (conn as any).shape.relationship = 'Inheritance';
+    conn.targetDecorator = { 
+        shape:'Arrow', 
+        width:12, 
+        height:12, 
+        style:{ fill:'#fff', strokeColor:'#64748b' } 
+    };
+  }
+  
+  setComposition(conn: ConnectorModel){
+    (conn as any).shape.relationship = 'Composition';
+    conn.targetDecorator = { 
+        shape:'Diamond', 
+        width:12, 
+        height:12, 
+        style:{ fill:'#64748b', strokeColor:'#64748b' } 
+    };
+  }
+  
+  setAggregation(conn: ConnectorModel){
+    (conn as any).shape.relationship = 'Aggregation';
+    conn.targetDecorator = { 
+        shape:'Diamond', 
+        width:12, 
+        height:12, 
+        style:{ fill:'#fff', strokeColor:'#64748b' } 
+    };
   }
 
-  closeEditor() {
-    this.router.navigate(['/projects']);
+  setOneToMany(){
+    const sel = this.diagram.selectedItems?.connectors?.[0] as ConnectorModel;
+    if(!sel) return;
+    (sel as any).shape.multiplicity = {
+      type:'OneToMany',
+      source:{ optional:false, lowerBounds:'1', upperBounds:'1' },
+      target:{ optional:true,  lowerBounds:'0', upperBounds:'*' }
+    };
+    this.diagram.dataBind(); // aplica cambios
   }
 
   showAttributeTable() {
@@ -627,4 +539,59 @@ export class UmlEditorComponent implements OnInit {
       alert('Please select a UML Class or Interface first');
     }
   }
+
+  logJson(){
+    const json = this.diagram.saveDiagram();
+    console.info('SYNCFUSION_JSON', JSON.parse(json));
+  }
+
+  fitToPage() {
+    this.diagram.fitToPage();
+  }
+
+  closeEditor() {
+    this.router.navigate(['/projects']);
+  }
+
+  onSelectionChange(e: ISelectionChangeEventArgs){
+    const v = e.newValue as Selector | (NodeModel | ConnectorModel)[];
+
+    // Caso 1: Selector (tiene .nodes)
+    if (v && (v as any).nodes !== undefined) {
+      const nodes = (v as Selector).nodes as NodeModel[];
+      this.selectedNodeId = nodes?.length ? (nodes[0].id as string) : null;
+      return;
+    }
+
+    // Caso 2: Array de seleccionados
+    if (Array.isArray(v)) {
+      const firstNode = v.find(el => (el as NodeModel).id && (el as any).offsetX !== undefined) as NodeModel | undefined;
+      this.selectedNodeId = firstNode ? (firstNode.id as string) : null;
+      return;
+    }
+
+    this.selectedNodeId = null;
+  }
+
+    // Exportar imagen del diagrama
+    async exportImage(format: 'PNG' | 'SVG') {
+        // Opcional: nombre basado en proyecto/fecha
+        const fileName = `uml-diagram-${new Date().toISOString().slice(0,19).replace(/[:T]/g,'-')}`;
+
+        // Ajusta región y fondo según lo que quieras capturar:
+        await this.diagram.exportDiagram({
+            format,                      // 'PNG' | 'SVG' | 'JPG'
+            fileName,
+            multiplePage: false,         // una sola imagen
+            region: 'Content',           // 'PageSettings' para incluir márgenes/página
+            mode: 'Download',            // descarga directa
+            //margin: { left: 20, right: 20, top: 20, bottom: 20 },
+            //backgroundColor: this.isDark() ? '#0f172a' : '#ffffff' // opcional: contraste imagen
+        });
+    }
+
+    // private isDark(): boolean {
+    //     return document.documentElement.classList.contains('app-dark');
+    // }
+
 }

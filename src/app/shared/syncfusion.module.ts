@@ -18,7 +18,7 @@ import {
   RadialTreeService,
   ComplexHierarchicalTreeService,
   SymmetricLayoutService,
-  LineDistributionService
+  LineDistributionService,
 } from '@syncfusion/ej2-angular-diagrams';
 
 // Additional Syncfusion modules

@@ -4,6 +4,7 @@ import { AppLayout } from './core/layouts/component/app.layout';
 import { Notfound } from './core/layouts/component/notfound';
 import { authGuard, authMatchGuard } from './core/guards/auth.guard';
 import { loggedResolver } from './core/guards/logged.guard';
+//import { UmlEditorComponent } from './dashboard/components/uml-editor/uml-editor.component';
 
 export const appRoutes: Routes = [
     // Zona protegida por authGuard
@@ -31,6 +32,13 @@ export const appRoutes: Routes = [
         }
         ]
     },
+
+    // Editor UML sin layout padre (pantalla completa)
+    // {
+    //     path: 'editor/:id',
+    //     component: UmlEditorComponent,
+    //     canActivate: [authGuard]
+    // },
 
     // Auth (redirige si ya está logueado)
     {

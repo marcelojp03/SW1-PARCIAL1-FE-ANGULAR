@@ -1,7 +1,7 @@
 // dashboard/dashboard.routes.ts
 import { Routes } from '@angular/router';
-import { ProjectsPage } from './components/projects-page.component';
-import { UmlEditorComponent } from './components/uml-editor.component';
+import { ProjectsPage } from './components/projects-page/projects-page.component';
+import { UmlEditorComponent } from './components/uml-editor/uml-editor.component';
 
 export const dashboardRoutes: Routes = [
   {

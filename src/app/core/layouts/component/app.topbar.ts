@@ -36,7 +36,7 @@ import { AuthService } from '../../services/auth.service';
                         />
                     </g>
                 </svg>
-                <span>DATABASE DESIGNER</span>
+                <span>PARCIAL SOFTWARE 1</span>
             </a>
         </div>
 
@@ -74,14 +74,14 @@ import { AuthService } from '../../services/auth.service';
 
             <div class="layout-topbar-menu hidden lg:block">
                 <div class="layout-topbar-menu-content">
-                    <button type="button" class="layout-topbar-action">
+                    <!-- <button type="button" class="layout-topbar-action">
                         <i class="pi pi-calendar"></i>
                         <span>Calendar</span>
                     </button>
                     <button type="button" class="layout-topbar-action">
                         <i class="pi pi-inbox"></i>
                         <span>Messages</span>
-                    </button>
+                    </button> -->
 
                     <!-- Botón de perfil con overlay menu -->
                     <div class="relative">
@@ -98,6 +98,14 @@ import { AuthService } from '../../services/auth.service';
                         <!-- Toggler -->
                         <button
                             pButton
+                            
+                            pStyleClass="@next" 
+                            enterFromClass="hidden" 
+                            enterActiveClass="animate-scalein" 
+                            leaveToClass="hidden" 
+                            leaveActiveClass="animate-fadeout" 
+                            [hideOnOutsideClick]="true"
+
                             type="button"
                             class="layout-topbar-action layout-topbar-action-highlight"
                             (click)="profileMenu.toggle($event)"
@@ -125,11 +133,11 @@ export class AppTopbar {
         private router: Router
     ) {
         this.profileItems = [
-        {
-            label: 'Perfil',
-            icon: 'pi pi-user',
-            command: () => this.goProfile()
-        },
+        // {
+        //     label: 'Perfil',
+        //     icon: 'pi pi-user',
+        //     command: () => this.goProfile()
+        // },
         {
             label: 'Notificaciones',
             icon: 'pi pi-bell',
@@ -147,9 +155,9 @@ export class AppTopbar {
     toggleDarkMode() {
         this.layoutService.layoutConfig.update((state) => ({ ...state, darkTheme: !state.darkTheme }));
     }
-    goProfile() {
-        this.router.navigate(['/dashboard/perfil']); 
-    }
+    // goProfile() {
+    //     this.router.navigate(['/dashboard/perfil']); 
+    // }
 
     onLogout() {
         this.authService.logout();
