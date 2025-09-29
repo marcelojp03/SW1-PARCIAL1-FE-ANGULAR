@@ -1,8 +1,13 @@
 // dashboard/components/uml-editor/uml-editor.component.ts
-import { Component, ViewChild, OnInit, ViewEncapsulation } from '@angular/core';
+import { Component, ViewChild, OnInit, OnDestroy, ViewEncapsulation } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 import { SharedModule } from '../../../shared/shared.module';
+import { SyncfusionService } from '../../../shared/services/syncfusion.service';
+import { ProjectService } from '../../../shared/services/project.service';
+import { MessageService, ConfirmationService } from 'primeng/api';
+import { ActivatedRoute } from '@angular/router';
+import { UnsavedChangesDialog, UnsavedChangesResult } from '../unsaved-changes-dialog/unsaved-changes-dialog.component';
 import { 
     DiagramComponent, 
     SymbolPaletteComponent,
@@ -29,24 +34,33 @@ import type { Selector } from '@syncfusion/ej2-diagrams';
 @Component({
   selector: 'app-uml-editor',
   standalone: true,
-  imports: [CommonModule, SharedModule],
+  imports: [CommonModule, SharedModule, UnsavedChangesDialog],
   providers: [
     DiagramContextMenuService,
     PrintAndExportService,
     BpmnDiagramsService,
     UndoRedoService,
     SnappingService,
-    HierarchicalTreeService
+    HierarchicalTreeService,
+    MessageService,
+    ConfirmationService
   ],
   encapsulation: ViewEncapsulation.None,
   templateUrl: './uml-editor.component.html',
   styleUrl: './uml-editor.component.scss'
 })
-export class UmlEditorComponent implements OnInit {
+export class UmlEditorComponent implements OnInit, OnDestroy {
   @ViewChild('diagram') diagram!: DiagramComponent;
   @ViewChild('symbolpalette') symbolPalette!: SymbolPaletteComponent;
 
   public layout: LayoutModel = { type: 'HierarchicalTree', orientation: 'TopToBottom' };
+  
+  // ID del proyecto actual
+  private projectId: string = '';
+  
+  // Estado de guardado
+  public hasUnsavedChanges: boolean = false;
+  public showUnsavedDialog: boolean = false;
 
   public created(): void {
     this.diagram.layout = this.layout;
@@ -77,11 +91,17 @@ export class UmlEditorComponent implements OnInit {
           shape: {
             type: 'UmlClassifier',
             classShape: {
-              attributes: [
-                { name: 'accepted', type: 'Date', style: { color: "red", fontFamily: "Arial", textDecoration: 'Underline', italic: true }, isSeparator: true },
-              ],
-              methods: [{ name: 'getHistory', style: {}, parameters: [{ name: 'Date', style: {} }], type: 'History' }],
-              name: 'Patient'
+              // COMENTADO: Auto-completado de clase con datos predefinidos
+              // attributes: [
+              //   { name: 'accepted', type: 'Date', style: { color: "red", fontFamily: "Arial", textDecoration: 'Underline', italic: true }, isSeparator: true },
+              // ],
+              // methods: [{ name: 'getHistory', style: {}, parameters: [{ name: 'Date', style: {} }], type: 'History' }],
+              // name: 'Patient'
+              
+              // Clase vacía para que el usuario la personalice
+              attributes: [],
+              methods: [],
+              name: 'Class'
             },
             classifier: 'Class'
           },
@@ -198,144 +218,145 @@ export class UmlEditorComponent implements OnInit {
         }
       ]
     },
-    {
-      id: 'umlMultiplicity', 
-      expanded: false, 
-      title: 'UML Multiplicity', 
-      symbols: [
-        // OneToOne
-        {
-          id: 'OneToOne',
-          sourcePoint: { x: 0, y: 0 },
-          targetPoint: { x: 60, y: 0 },
-          type: 'Straight',
-          shape: {
-            type: 'UmlClassifier',
-            relationship: 'Dependency',
-            multiplicity: {
-              type: 'OneToOne',
-            },
-          },
-        },
-        // ManyToOne
-        {
-          id: 'ManyToOne',
-          sourcePoint: { x: 0, y: 0 },
-          targetPoint: { x: 60, y: 0 },
-          type: 'Straight',
-          shape: {
-            type: 'UmlClassifier',
-            relationship: 'Dependency',
-            multiplicity: {
-              type: 'ManyToOne',
-              source: {
-                optional: true,
-                lowerBounds: '0',
-                upperBounds: '*',
-              },
-              target: {
-                optional: true,
-                lowerBounds: '1',
-                upperBounds: '1',
-              },
-            },
-          },
-        },
-        // OneToMany
-        {
-          id: 'OneToMany',
-          sourcePoint: { x: 0, y: 0 },
-          targetPoint: { x: 60, y: 0 },
-          type: 'Straight',
-          shape: {
-            type: 'UmlClassifier',
-            relationship: 'Dependency',
-            multiplicity: {
-              type: 'OneToMany',
-              source: {
-                optional: true,
-                lowerBounds: '1',
-                upperBounds: '1',
-              },
-              target: {
-                optional: true,
-                lowerBounds: '0',
-                upperBounds: '*',
-              },
-            },
-          },
-        },
-        // ManyToMany
-        {
-          id: 'ManyToMany',
-          sourcePoint: { x: 0, y: 0 },
-          targetPoint: { x: 60, y: 0 },
-          type: 'Straight',
-          shape: {
-            type: 'UmlClassifier',
-            relationship: 'Dependency',
-            multiplicity: {
-              type: 'ManyToMany',
-              source: {
-                optional: true,
-                lowerBounds: '0',
-                upperBounds: '*',
-              },
-              target: {
-                optional: true,
-                lowerBounds: '0',
-                upperBounds: '*',
-              },
-            },
-          },
-        }
-      ]
-    }
+    // {
+    //   id: 'umlMultiplicity', 
+    //   expanded: false, 
+    //   title: 'UML Multiplicity', 
+    //   symbols: [
+    //     // OneToOne
+    //     {
+    //       id: 'OneToOne',
+    //       sourcePoint: { x: 0, y: 0 },
+    //       targetPoint: { x: 60, y: 0 },
+    //       type: 'Straight',
+    //       shape: {
+    //         type: 'UmlClassifier',
+    //         relationship: 'Dependency',
+    //         multiplicity: {
+    //           type: 'OneToOne',
+    //         },
+    //       },
+    //     },
+    //     // ManyToOne
+    //     {
+    //       id: 'ManyToOne',
+    //       sourcePoint: { x: 0, y: 0 },
+    //       targetPoint: { x: 60, y: 0 },
+    //       type: 'Straight',
+    //       shape: {
+    //         type: 'UmlClassifier',
+    //         relationship: 'Dependency',
+    //         multiplicity: {
+    //           type: 'ManyToOne',
+    //           source: {
+    //             optional: true,
+    //             lowerBounds: '0',
+    //             upperBounds: '*',
+    //           },
+    //           target: {
+    //             optional: true,
+    //             lowerBounds: '1',
+    //             upperBounds: '1',
+    //           },
+    //         },
+    //       },
+    //     },
+    //     // OneToMany
+    //     {
+    //       id: 'OneToMany',
+    //       sourcePoint: { x: 0, y: 0 },
+    //       targetPoint: { x: 60, y: 0 },
+    //       type: 'Straight',
+    //       shape: {
+    //         type: 'UmlClassifier',
+    //         relationship: 'Dependency',
+    //         multiplicity: {
+    //           type: 'OneToMany',
+    //           source: {
+    //             optional: true,
+    //             lowerBounds: '1',
+    //             upperBounds: '1',
+    //           },
+    //           target: {
+    //             optional: true,
+    //             lowerBounds: '0',
+    //             upperBounds: '*',
+    //           },
+    //         },
+    //       },
+    //     },
+    //     // ManyToMany
+    //     {
+    //       id: 'ManyToMany',
+    //       sourcePoint: { x: 0, y: 0 },
+    //       targetPoint: { x: 60, y: 0 },
+    //       type: 'Straight',
+    //       shape: {
+    //         type: 'UmlClassifier',
+    //         relationship: 'Dependency',
+    //         multiplicity: {
+    //           type: 'ManyToMany',
+    //           source: {
+    //             optional: true,
+    //             lowerBounds: '0',
+    //             upperBounds: '*',
+    //           },
+    //           target: {
+    //             optional: true,
+    //             lowerBounds: '0',
+    //             upperBounds: '*',
+    //           },
+    //         },
+    //       },
+    //     }
+    //   ]
+    // }
   ];
 
+  // Template por defecto de Syncfusion - COMENTADO para empezar con diagrama vacío
   // Nodos basados en el ejemplo oficial
   public nodes: NodeModel[] = [
-    {
-      id: 'Patient',
-      shape: {
-        type: 'UmlClassifier',
-        classShape: {
-          name: 'Patient',
-          attributes: [
-            this.createProperty('id', 'Number'),
-            this.createProperty('name', 'String'),
-            this.createProperty('age', 'Number')
-          ],
-          methods: [
-            this.createMethods('getName', 'String'),
-            this.createMethods('getAge', 'Number')
-          ]
-        },
-        classifier: 'Class'
-      } as UmlClassifierShapeModel,
-      offsetX: 200,
-      offsetY: 250
-    },
-    {
-      id: 'Doctor',
-      shape: {
-        type: 'UmlClassifier',
-        classShape: {
-          name: 'Doctor',
-          attributes: [
-            this.createProperty('specialist', 'String'),
-            this.createProperty('experience', 'Number')
-          ]
-        },
-        classifier: 'Class'
-      } as UmlClassifierShapeModel,
-      offsetX: 500,
-      offsetY: 250
-    }
+    // {
+    //   id: 'Patient',
+    //   shape: {
+    //     type: 'UmlClassifier',
+    //     classShape: {
+    //       name: 'Patient',
+    //       attributes: [
+    //         this.createProperty('id', 'Number'),
+    //         this.createProperty('name', 'String'),
+    //         this.createProperty('age', 'Number')
+    //       ],
+    //       methods: [
+    //         this.createMethods('getName', 'String'),
+    //         this.createMethods('getAge', 'Number')
+    //       ]
+    //     },
+    //     classifier: 'Class'
+    //   } as UmlClassifierShapeModel,
+    //   offsetX: 200,
+    //   offsetY: 250
+    // },
+    // {
+    //   id: 'Doctor',
+    //   shape: {
+    //     type: 'UmlClassifier',
+    //     classShape: {
+    //       name: 'Doctor',
+    //       attributes: [
+    //         this.createProperty('specialist', 'String'),
+    //         this.createProperty('experience', 'Number')
+    //       ]
+    //     },
+    //     classifier: 'Class'
+    //   } as UmlClassifierShapeModel,
+    //   offsetX: 500,
+    //   offsetY: 250
+    // }
   ];
 
   public connectors: ConnectorModel[] = [
-    this.createConnector('connect1', 'Patient', 'Doctor')
+    // this.createConnector('connect1', 'Patient', 'Doctor')
   ];
 
   public symbolMargin: MarginModel = {
@@ -346,10 +367,66 @@ export class UmlEditorComponent implements OnInit {
 
   showExportMenu = false;
 
-  constructor(private router: Router) {}
+  constructor(
+    private router: Router,
+    private route: ActivatedRoute,
+    private syncfusionService: SyncfusionService,
+    private projectService: ProjectService,
+    private messageService: MessageService,
+    private confirmationService: ConfirmationService
+  ) {}
 
   ngOnInit() {
     console.log('UML Editor initialized with official Syncfusion structure');
+    
+    // Obtener ID del proyecto desde la ruta
+    this.route.params.subscribe(params => {
+      this.projectId = params['id'];
+      if (this.projectId) {
+        this.loadProject();
+      }
+    });
+
+    // Detectar cambios en el navegador (cerrar pestaña/ventana)
+    window.addEventListener('beforeunload', this.onBeforeUnload.bind(this));
+  }
+
+  ngOnDestroy() {
+    // Limpiar event listener
+    window.removeEventListener('beforeunload', this.onBeforeUnload.bind(this));
+  }
+
+  // Detecta cuando el usuario intenta cerrar la pestaña/ventana
+  onBeforeUnload(event: BeforeUnloadEvent) {
+    if (this.hasUnsavedChanges) {
+      event.preventDefault();
+      event.returnValue = ''; // Algunos navegadores requieren esto
+      return '¿Estás seguro de que quieres salir? Tienes cambios sin guardar.';
+    }
+    return null;
+  }
+
+  /**
+   * Carga el proyecto y restaura el diagrama si existe
+   */
+  private loadProject(): void {
+    this.projectService.restoreProject(this.projectId).subscribe({
+      next: (diagramData) => {
+        if (diagramData && Object.keys(diagramData).length > 0) {
+          // Cargar el diagrama guardado
+          setTimeout(() => {
+            this.diagram.loadDiagram(JSON.stringify(diagramData));
+            console.log('Diagram restored from server');
+          }, 100);
+        } else {
+          console.log('No saved diagram found, starting fresh');
+        }
+      },
+      error: (error) => {
+        console.warn('Could not restore project, starting fresh:', error);
+        // No mostrar error al usuario, simplemente empezar con diagrama vacío
+      }
+    });
   }
 
   // Set the default values of nodes - from official example
@@ -438,6 +515,7 @@ export class UmlEditorComponent implements OnInit {
   addNewClass() {
     const newClass = this.createNode('Class_' + Date.now(), 400, 400, 'NewClass');
     this.diagram.add(newClass);
+    this.markAsChanged();
     console.log('Added new class');
   }
 
@@ -447,6 +525,14 @@ export class UmlEditorComponent implements OnInit {
     const node = this.diagram.getObject(id) as NodeModel;
     const method = { name:'newMethod', type:'void', parameters:[{name:'p', type:'String'}] };
     this.diagram.addChildToUmlNode(node, method, 'Method');
+    this.markAsChanged();
+  }
+
+  /**
+   * Marca el proyecto como modificado
+   */
+  private markAsChanged(): void {
+    this.hasUnsavedChanges = true;
   }
 
   addAttribute() {
@@ -455,6 +541,7 @@ export class UmlEditorComponent implements OnInit {
     const node = this.diagram.getObject(id) as NodeModel;
     const attribute = { name:'newAttribute', type:'String', scope:'public' };
     this.diagram.addChildToUmlNode(node, attribute, 'Attribute');
+    this.markAsChanged();
   }
 
   // Helpers para cambiar tipo de conectores:
@@ -542,7 +629,99 @@ export class UmlEditorComponent implements OnInit {
 
   logJson(){
     const json = this.diagram.saveDiagram();
-    console.info('SYNCFUSION_JSON', JSON.parse(json));
+    const diagramData = JSON.parse(json);
+    
+    console.info('SYNCFUSION_JSON', diagramData);
+
+    // Enviar al endpoint de echo para pruebas
+    this.syncfusionService.echo(diagramData).subscribe({
+      next: (response) => {
+        console.info('Echo response:', response);
+        this.messageService.add({
+          key: 'br',
+          severity: 'success',
+          summary: 'JSON enviado correctamente',
+          detail: 'Datos enviados al endpoint de pruebas',
+          life: 3000
+        });
+      },
+      error: (error) => {
+        console.error('Error sending JSON:', error);
+        this.messageService.add({
+          key: 'br',
+          severity: 'error',
+          summary: 'Error al enviar JSON',
+          detail: 'No se pudo conectar con el servidor',
+          life: 3000
+        });
+      }
+    });
+  }
+
+  /**
+   * Guarda el proyecto completo (Thumbnail + JSON crudo + conversión a canónico)
+   */
+  saveProject(): void {
+    if (!this.projectId) {
+      this.messageService.add({
+        key: 'br',
+        severity: 'error',
+        summary: 'Error',
+        detail: 'No hay proyecto seleccionado',
+        life: 3000
+      });
+      return;
+    }
+
+    console.log('[UMLEditor] Starting complete project save');
+    const json = this.diagram.saveDiagram();
+    const diagramData = JSON.parse(json);
+    console.log('[UMLEditor] Diagram data extracted:', diagramData);
+
+    // Generar thumbnail
+    let thumbnailDataUri: string | undefined;
+    try {
+      thumbnailDataUri = this.diagram.exportDiagram({
+        mode: 'Data',
+        format: 'PNG',
+        region: 'Content'
+      }) as string;
+      console.log('[UMLEditor] Thumbnail generated, length:', thumbnailDataUri.length);
+    } catch (error) {
+      console.warn('[UMLEditor] Could not generate thumbnail:', error);
+      thumbnailDataUri = undefined;
+    }
+
+    // Guardado completo unificado
+    this.projectService.saveCompleteProject(this.projectId, diagramData, thumbnailDataUri).subscribe({
+      next: (result) => {
+        console.log('[UMLEditor] Complete save successful:', result);
+        this.hasUnsavedChanges = false; // Limpiar flag de cambios no guardados
+        
+        let detail = 'Diagrama y modelo canónico actualizados';
+        if (result.thumbnail) {
+          detail += ' (con thumbnail)';
+        }
+        
+        this.messageService.add({
+          key: 'br',
+          severity: 'success',
+          summary: 'Proyecto guardado completamente',
+          detail: detail,
+          life: 3000
+        });
+      },
+      error: (error) => {
+        console.error('[UMLEditor] Error in complete save:', error);
+        this.messageService.add({
+          key: 'br',
+          severity: 'error',
+          summary: 'Error al guardar',
+          detail: 'No se pudo guardar el proyecto completamente',
+          life: 3000
+        });
+      }
+    });
   }
 
   fitToPage() {
@@ -550,7 +729,91 @@ export class UmlEditorComponent implements OnInit {
   }
 
   closeEditor() {
-    this.router.navigate(['/projects']);
+    if (this.hasUnsavedChanges) {
+      this.showUnsavedDialog = true;
+    } else {
+      // No hay cambios, cerrar directamente
+      this.router.navigate(['/projects']);
+    }
+  }
+
+  onUnsavedChangesResult(result: UnsavedChangesResult) {
+    switch (result.action) {
+      case 'save':
+        // Mostrar mensaje de guardado
+        this.messageService.add({
+          severity: 'info',
+          summary: 'Guardando...',
+          detail: 'Guardando el proyecto antes de salir'
+        });
+        // Guardar y luego cerrar
+        this.saveProject();
+        // El navigate se hará después de que se complete el guardado
+        setTimeout(() => {
+          this.hasUnsavedChanges = false;
+          this.router.navigate(['/projects']);
+        }, 2000); // Dar tiempo para que se complete el guardado
+        break;
+      
+      case 'discard':
+        // Cerrar sin guardar
+        this.hasUnsavedChanges = false;
+        this.router.navigate(['/projects']);
+        break;
+      
+      case 'cancel':
+        // No hacer nada, el diálogo ya se cerró
+        break;
+    }
+  }
+
+  // Método saveAsThumbnail removido - ahora está integrado en saveProject()
+
+  /**
+   * Exporta el proyecto a Spring Boot
+   */
+  exportToSpringBoot(): void {
+    if (!this.projectId) return;
+
+    this.projectService.exportToSpringBoot(this.projectId).subscribe({
+      next: (blob: Blob) => {
+        // Crear URL para descargar el archivo
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `project-${this.projectId}-springboot.zip`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
+
+        this.messageService.add({
+          key: 'br',
+          severity: 'success',
+          summary: 'Exportación exitosa',
+          detail: 'Proyecto Spring Boot descargado',
+          life: 3000
+        });
+      },
+      error: (error) => {
+        console.error('Error exporting to Spring Boot:', error);
+        this.messageService.add({
+          key: 'br',
+          severity: 'error',
+          summary: 'Error en exportación',
+          detail: 'No se pudo generar el proyecto Spring Boot',
+          life: 3000
+        });
+      }
+    });
+  }
+
+  /**
+   * Detecta cualquier cambio en el diagrama y marca como no guardado
+   */
+  onDiagramChange(event: any): void {
+    console.log('[UMLEditor] Diagram change detected:', event.cause);
+    this.markAsChanged();
   }
 
   onSelectionChange(e: ISelectionChangeEventArgs){

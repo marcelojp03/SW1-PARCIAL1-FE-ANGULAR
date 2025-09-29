@@ -5,13 +5,14 @@ import { map, catchError, finalize, timeout } from 'rxjs/operators';
 
 import { HttpError } from './http-error';
 import { environment } from '../../../environments/environment';
+import { AuthService } from '../services/auth.service';
 
 const APP_XHR_TIMEOUT = 30000;
 
 @Injectable()
 export class AppInterceptor implements HttpInterceptor {
 
-  constructor() {}
+  constructor(private authService: AuthService) {}
 
   intercept(req: HttpRequest<any>, next: HttpHandler): Observable<HttpEvent<any>> {
 
@@ -27,10 +28,24 @@ export class AppInterceptor implements HttpInterceptor {
 
   private performRequest(req: HttpRequest<any>): HttpRequest<any> {
     let headers: HttpHeaders = req.headers;
-    headers = headers.set('MyCustomHeaderKey', `MyCustomHeaderValue`);
-    // headers = headers.set('MyCustomHeaderKey', `MyCustomHeaderValue`);
+    
+    // Solo agregar token para rutas que no sean login o register
+    const isAuthRequest = req.url.includes('/auth/login') || req.url.includes('/auth/register');
+    
+    if (!isAuthRequest && this.authService.isLogged()) {
+      const token = this.authService.accessToken;
+      if (token) {
+        headers = headers.set('Authorization', `Bearer ${token}`);
+      }
+    }
 
-    return req.clone({ url: `${environment.backend.host}/${req.url}`, headers });
+    // Determinar la URL completa
+    let fullUrl = req.url;
+    if (!req.url.startsWith('http')) {
+      fullUrl = `${environment.backend.host}/${req.url}`;
+    }
+
+    return req.clone({ url: fullUrl, headers });
 }
 
   private handleSuccessfulResponse(event: any): HttpResponse<any> {

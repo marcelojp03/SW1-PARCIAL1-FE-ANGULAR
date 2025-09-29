@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, OnInit, signal } from '@angular/core';
 import { AbstractControl, FormBuilder, FormControl, FormGroup, Validators } from '@angular/forms';
-import { Router } from '@angular/router';
+import { Router, RouterModule } from '@angular/router';
 import { Subscription } from 'rxjs';
 import { finalize } from 'rxjs/operators';
 
@@ -17,7 +17,7 @@ import { MessageService } from 'primeng/api';
     templateUrl: './login.component.html',
     styleUrls: ['./login.component.scss'],
     standalone: true,
-    imports: [AppFloatingConfigurator, SharedModule],
+    imports: [AppFloatingConfigurator, SharedModule, RouterModule],
     changeDetection: ChangeDetectionStrategy.OnPush,
     providers: [MessageService]
 })
@@ -94,45 +94,51 @@ export class LoginComponent implements OnInit {
       .subscribe({
         next: (res:any) => {
           console.info("LOGIN RESPONSE: ",res);
-          if (res.status == 'success') {
+          if (res.success) {
             localStorage.setItem('session', JSON.stringify(res));
-            localStorage.setItem('token',JSON.stringify(res.data.token))
-            localStorage.setItem('usuario',JSON.stringify(res.data.usuario))
-            localStorage.setItem('username',JSON.stringify(res.data.usuario.nombre_usuario));
-            localStorage.setItem('name',JSON.stringify(res.data.usuario.nombre));
-            localStorage.setItem('user_id',JSON.stringify(res.data.usuario.id));       
-            // this.bitacoraService.registrarBitacora(); // REGISTRA LA BITACORA
-
+            localStorage.setItem('token',JSON.stringify(res.data.access_token))
+            localStorage.setItem('user',JSON.stringify(res.data.user))
+            localStorage.setItem('user_id',JSON.stringify(res.data.user.id));       
 
             // Éxito
             this.messageService.add({
               key: 'br',
               severity: 'success',
               summary: 'Sesión iniciada correctamente',
-              detail: `Bienvenido, ${res.data?.usuario?.name || ''}`,
+              detail: `Bienvenido, ${res.data?.user?.name || ''}`,
               life: 3500
             });
 
             // Redirección tras un breve delay para que se vea el toast
-            setTimeout(() => this.router.navigateByUrl('/dashboard'), 1500);
+            setTimeout(() => this.router.navigateByUrl('/projects'), 1500);
           }
-          else if(res.status=='error'){
-            const msg = res?.message || 'Correo o contraseña incorrectos';
+          else {
+            const msg = res?.message || 'Credenciales inválidas';
             this.messageService.add({
               key: 'br',
               severity: 'error',
-              summary: 'Correo o contraseña incorrectos',
+              summary: 'Error de autenticación',
               detail: msg,
               life: 3000
             });
           }
         },
         error: (error:any) => {
+          let errorMessage = 'No se pudo conectar con el servidor';
+          
+          if (error.status === 401) {
+            errorMessage = error.error?.message || 'Credenciales inválidas';
+          } else if (error.status === 0) {
+            errorMessage = 'No se pudo conectar con el servidor';
+          } else {
+            errorMessage = error.error?.message || 'Error desconocido';
+          }
+
           this.messageService.add({
             key: 'br',
             severity: 'error',
-            summary: 'Error de conexión',
-            detail: 'No se pudo conectar con el servidor',
+            summary: 'Error de autenticación',
+            detail: errorMessage,
             life: 3000
           });
           console.error("ERROR AL INICIAR SESION" , error);

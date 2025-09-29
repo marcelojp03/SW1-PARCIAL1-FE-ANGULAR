@@ -31,7 +31,7 @@ export class LayoutService {
         preset: 'Aura',
         primary: 'teal',
         surface: null,
-        darkTheme: true, // Tema oscuro por defecto
+        darkTheme: false, // Tema claro por defecto
         menuMode: 'static'
     };
 

@@ -5,10 +5,10 @@
 export const environment = {
   production: false,
   // When developing without a backend set this to true to bypass login
-  skipAuth: true,
+  skipAuth: false,
   backend: {
-    host: 'http://127.0.0.1:8585/api',
-    host3: 'http://localhost:8585/api',
+    host: 'http://127.0.0.1:3009/api',
+    host3: 'http://localhost:3009/api',
     host4: 'http://207.244.229.255:8510/api',
     reportes: 'http://127.0.0.1:8530/api/rep',
     //reportes: 'http://207.244.229.255:8530/api/rep',

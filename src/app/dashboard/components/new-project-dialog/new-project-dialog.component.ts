@@ -2,11 +2,12 @@
 import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { SharedModule } from '../../../shared/shared.module';
 
 @Component({
   selector: 'app-new-project-dialog',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [SharedModule],
   templateUrl: './new-project-dialog.component.html',
   styleUrl: './new-project-dialog.component.scss'
 })
@@ -17,8 +18,10 @@ export class NewProjectDialog {
   
   projectName = '';
   projectDescription = '';
+  loading = false;
 
   cancel() {
+    if (this.loading) return; // Prevenir cancelar durante loading
     this.visible = false;
     this.visibleChange.emit(false);
     this.resetForm();
@@ -26,20 +29,27 @@ export class NewProjectDialog {
 
   confirm() {
     const name = this.projectName.trim();
-    if (!name) return;
+    if (!name || this.loading) return;
+    
+    this.loading = true;
     
     this.projectCreated.emit({
       name,
       description: this.projectDescription.trim() || undefined
     });
     
-    this.visible = false;
-    this.visibleChange.emit(false);
-    this.resetForm();
+    // Reset después de un pequeño delay para mostrar el loading
+    setTimeout(() => {
+      this.loading = false;
+      this.visible = false;
+      this.visibleChange.emit(false);
+      this.resetForm();
+    }, 500);
   }
 
   private resetForm() {
     this.projectName = '';
     this.projectDescription = '';
+    this.loading = false;
   }
 }

@@ -1,43 +1,61 @@
 <!-- new-project-dialog.component.html -->
-<div *ngIf="visible" class="fixed inset-0 flex items-center justify-center bg-black/50 z-50">
-  <div class="bg-white dark:bg-gray-800 p-6 rounded-lg w-96 max-w-md mx-4">
-    <h3 class="text-lg font-semibold mb-4">Nuevo Proyecto</h3>
-    
-    <div class="mb-4">
-      <label class="block text-sm font-medium mb-2">Nombre del proyecto</label>
-      <input 
-        [(ngModel)]="projectName" 
-        placeholder="Ingresa el nombre del proyecto"
-        class="w-full p-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-        (keyup.enter)="confirm()"
-        #nameInput
-      />
+<p-dialog 
+  [(visible)]="visible" 
+  [modal]="true" 
+  [closable]="!loading"
+  [closeOnEscape]="!loading"
+  header="Nuevo Proyecto"
+  [style]="{width: '450px'}"
+  styleClass="p-fluid"
+>
+  <ng-template pTemplate="content">
+    <div class="formgrid grid">
+      <div class="field col-12">
+        <label for="projectName" class="block text-surface-900 dark:text-surface-0 font-medium mb-2">
+          Nombre del proyecto *
+        </label>
+        <input 
+          pInputText 
+          id="projectName"
+          [(ngModel)]="projectName" 
+          placeholder="Ingresa el nombre del proyecto"
+          class="w-full"
+          [disabled]="loading"
+          (keyup.enter)="confirm()"
+        />
+      </div>
+      
+      <div class="field col-12">
+        <label for="projectDescription" class="block text-surface-900 dark:text-surface-0 font-medium mb-2">
+          Descripción (opcional)
+        </label>
+        <textarea 
+          pInputTextarea
+          id="projectDescription"
+          [(ngModel)]="projectDescription"
+          placeholder="Describe brevemente tu proyecto"
+          rows="3"
+          class="w-full"
+          [disabled]="loading"
+        ></textarea>
+      </div>
     </div>
-    
-    <div class="mb-4">
-      <label class="block text-sm font-medium mb-2">Descripción (opcional)</label>
-      <textarea 
-        [(ngModel)]="projectDescription"
-        placeholder="Describe brevemente tu proyecto"
-        rows="3"
-        class="w-full p-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-      ></textarea>
-    </div>
-    
-    <div class="flex justify-end gap-3">
-      <button 
+  </ng-template>
+  
+  <ng-template pTemplate="footer">
+    <div class="flex justify-end gap-2">
+      <p-button 
+        label="Cancelar" 
+        severity="secondary" 
         (click)="cancel()"
-        class="px-4 py-2 text-gray-600 hover:text-gray-800 border border-gray-300 rounded-md hover:bg-gray-50"
-      >
-        Cancelar
-      </button>
-      <button 
+        [disabled]="loading"
+      ></p-button>
+      <p-button 
+        label="Crear Proyecto" 
         (click)="confirm()"
-        [disabled]="!projectName.trim()"
-        class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
-      >
-        Crear Proyecto
-      </button>
+        [disabled]="!projectName.trim() || loading"
+        [loading]="loading"
+      ></p-button>
     </div>
-  </div>
-</div>
+  </ng-template>
+</p-dialog>

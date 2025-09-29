@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpBackend, HttpClient, HttpHeaders, JsonpClientBackend } from '@angular/common/http';
 import { Observable, of } from 'rxjs';
-import { map } from 'rxjs/operators';
+import { map, catchError } from 'rxjs/operators';
 
 import { environment } from '../../../environments/environment';
 import { HttpApi } from '../http/http-api';
@@ -39,76 +39,77 @@ export class AuthService {
 
   register(userRequest: any): Observable<any> {
     const data = {
-      code: userRequest.codigo,
+      name: userRequest.name,
       email: userRequest.email,
       password: userRequest.password
     };
 
-    //return this.http.post(HttpApi.userRegister, data)
-    return this.http.post(`${this.apiUrl}/usuarios/registrar`, data)
+    console.log('[AuthService] Attempting registration for user:', userRequest.email);
+    console.log('[AuthService] Register URL:', `${this.apiUrl}/auth/register`);
+    console.log('[AuthService] Register payload:', data);
+
+    return this.http.post(`${this.apiUrl}/auth/register`, data)
       .pipe(
         map((response: any) => {
+          console.log('[AuthService] Register response:', response);
           return response;
+        }),
+        catchError((error: any) => {
+          console.error('[AuthService] Register error:', error);
+          console.error('[AuthService] Error status:', error.status);
+          console.error('[AuthService] Error details:', error.error);
+          throw error;
         })
       );
   }
 
   loginWithUserCredentials(email: string, password: string): Observable<any> {
-    let idf="core:auth.service::loginWithUserCredentials::";
-    let user: User = {
-      correo_electronico: email,
-      clave: password  
-    }  
     const credentials = {
-      correo: email,
-      contraseña: password
+      email: email,
+      password: password
     };
 
-    
     const httpOptions = {
       headers: new HttpHeaders({
-                  'Content-Type': 'application/json',
-                  'Access-Control-Allow-Origin': '*'
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*'
       })
     }; 
 
+    console.log('[AuthService] Attempting login for user:', email);
+    console.log('[AuthService] Login URL:', `${this.apiUrl}/auth/login`);
+    console.log('[AuthService] Login payload:', credentials);
 
-    console.log(idf +"Ev:10::credentials:",credentials);
-    let url=this.apiUrl+"/usuarios/login";
-    console.log(idf +"Ev:20::url:",url);
-
-    return this.http.post(url, credentials,httpOptions);    
-      // .pipe(
-      //   map((response: any) => {
-      //     console.log("response:",response);
-          
-      //     localStorage.setItem('session', JSON.stringify(response));
-      //     localStorage.setItem('token',JSON.stringify(response.data.token))
-      //     localStorage.setItem('usuario',JSON.stringify(response.data.usuario))
-      //     localStorage.setItem('username',JSON.stringify(response.data.usuario.nombre_usuario));
-      //     localStorage.setItem('name',JSON.stringify(response.data.usuario.nombre));
-      //     localStorage.setItem('user_id',JSON.stringify(response.data.usuario.id));
-          
-      //     return response;
-      //   })
-      // );
+    return this.http.post(`${this.apiUrl}/auth/login`, credentials, httpOptions).pipe(
+      map((response: any) => {
+        console.log('[AuthService] Login response:', response);
+        return response;
+      }),
+      catchError((error: any) => {
+        console.error('[AuthService] Login error:', error);
+        console.error('[AuthService] Error status:', error.status);
+        console.error('[AuthService] Error details:', error.error);
+        throw error;
+      })
+    );
   }
 
   loginWithRefreshToken(): Observable<any> {
-    let headers = new HttpHeaders();
-    headers = headers.set('Content-Type', 'application/x-www-form-urlencoded');
+    const headers = new HttpHeaders({
+      'Authorization': `Bearer ${this.refreshToken}`,
+      'Content-Type': 'application/json'
+    });
 
-    const body = new URLSearchParams();
-    body.set('grant_type', 'refresh_token');
-    body.set('client_id', OAUTH_DATA.client_id);
-    body.set('client_secret', OAUTH_DATA.client_secret);
-    body.set('refresh_token', this.refreshToken);
-    body.set('scope', OAUTH_DATA.scope);
-
-    return this.http.post(HttpApi.oauthLogin, body.toString(), { headers })
+    return this.http.post(`${this.apiUrl}/auth/refresh`, {}, { headers })
       .pipe(
         map((response: any) => {
-          localStorage.setItem('session', JSON.stringify(response));
+          if (response.success) {
+            // Actualizar tokens en localStorage
+            const currentSession = JSON.parse(localStorage.getItem('session') || '{}');
+            currentSession.data.access_token = response.data.access_token;
+            currentSession.data.refresh_token = response.data.refresh_token;
+            localStorage.setItem('session', JSON.stringify(currentSession));
+          }
           return response;
         })
       );
@@ -129,11 +130,21 @@ export class AuthService {
   }
 
   get accessToken() {
-    return localStorage['session'] ? JSON.parse(localStorage['session']).access_token : null;
+    const session = localStorage.getItem('session');
+    if (session) {
+      const sessionData = JSON.parse(session);
+      return sessionData.data?.access_token || null;
+    }
+    return null;
   }
 
   get refreshToken() {
-    return localStorage['session'] ? JSON.parse(localStorage['session']).refresh_token : null;
+    const session = localStorage.getItem('session');
+    if (session) {
+      const sessionData = JSON.parse(session);
+      return sessionData.data?.refresh_token || null;
+    }
+    return null;
   }
 
 

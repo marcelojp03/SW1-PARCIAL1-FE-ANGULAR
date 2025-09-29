@@ -1,4 +1,5 @@
 <!-- projects-page.component.html -->
+<p-toast position="top-right"></p-toast>
 <div class="p-6">
   <div class="flex items-center justify-between mb-6">
     <div>
@@ -42,9 +43,18 @@
             <h3 class="text-lg font-semibold text-gray-900 dark:text-white truncate">
               {{ project.name }}
             </h3>
-            <span *ngIf="project.isShared" class="text-xs bg-green-100 text-green-800 px-2 py-1 rounded">
-              Compartido
-            </span>
+            <div class="flex items-center gap-2">
+              <span *ngIf="project.isShared" class="text-xs bg-green-100 text-green-800 px-2 py-1 rounded">
+                Compartido
+              </span>
+              <button 
+                (click)="editProject(project, $event)"
+                class="text-gray-400 hover:text-blue-600 transition-colors p-1"
+                title="Editar proyecto"
+              >
+                <i class="pi pi-pencil text-sm"></i>
+              </button>
+            </div>
           </div>
           
           <p class="text-gray-600 dark:text-gray-400 text-sm mb-4 line-clamp-2">
@@ -85,4 +95,11 @@
     [(visible)]="showNewDialog"
     (projectCreated)="onProjectCreated($event)"
   ></app-new-project-dialog>
+
+  <!-- Edit Project Dialog -->
+  <edit-project-dialog
+    [(visible)]="showEditDialog"
+    [project]="selectedProject"
+    (projectUpdate)="onProjectUpdated($event)"
+  ></edit-project-dialog>
 </div>

@@ -1,0 +1,48 @@
+<!-- unsaved-changes-dialog.component.html -->
+<p-dialog 
+  [(visible)]="visible" 
+  [modal]="true" 
+  header="Cambios sin guardar"
+  [style]="{width: '450px'}"
+  [closable]="false"
+  [closeOnEscape]="false"
+>
+  <ng-template pTemplate="content">
+    <div class="flex items-center gap-4 mb-6">
+      <i class="pi pi-exclamation-triangle text-orange-500 text-2xl"></i>
+      <div>
+        <p class="text-surface-900 dark:text-surface-0 font-medium mb-2">
+          Tienes cambios sin guardar
+        </p>
+        <p class="text-surface-600 dark:text-surface-400 text-sm">
+          ¿Qué deseas hacer con los cambios realizados en el diagrama?
+        </p>
+      </div>
+    </div>
+  </ng-template>
+  
+  <ng-template pTemplate="footer">
+    <div class="flex justify-end gap-2">
+      <p-button 
+        label="Cancelar" 
+        severity="secondary" 
+        outlined
+        (onClick)="onCancel()"
+        icon="pi pi-times"
+      ></p-button>
+      <p-button 
+        label="Salir sin guardar" 
+        severity="danger"
+        outlined
+        (onClick)="onDiscard()"
+        icon="pi pi-trash"
+      ></p-button>
+      <p-button 
+        label="Guardar y salir" 
+        severity="success"
+        (onClick)="onSave()"
+        icon="pi pi-save"
+      ></p-button>
+    </div>
+  </ng-template>
+</p-dialog>

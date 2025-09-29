@@ -1,13 +1,19 @@
 <!-- uml-editor.component.html -->
+<p-toast key="br" position="bottom-right"></p-toast>
+<p-confirmDialog></p-confirmDialog>
 <div class="control-section">
   <!-- Header con botones -->
   <div class="uml-header bg-white dark:bg-slate-900 border-b border-gray-200 dark:border-slate-700">
     <div class="flex items-center gap-2">
-      <h2 class="text-lg font-semibold flex-1 text-slate-900 dark:text-slate-100">UML Class Diagram Editor</h2>
-      <button class="btn btn-primary" (click)="addNewClass()">+ Class</button>
-      <button class="btn btn-success" (click)="addMethod()">+ Method</button>
-      <button class="btn btn-warning" (click)="addAttribute()">+ Attribute</button>
+      <h2 class="text-lg font-semibold flex-1 text-slate-900 dark:text-slate-100">
+        Editor de Diagramas de Clase UML
+        <span *ngIf="hasUnsavedChanges" class="ml-2 text-orange-500 text-sm">● Cambios no guardados</span>
+      </h2>
+      <button class="btn btn-primary" (click)="addNewClass()">+ Clase</button>
+      <!-- <button class="btn btn-success" (click)="addMethod()">+ étodo</button> -->
+      <button class="btn btn-warning" (click)="addAttribute()">+ Atributo</button>
       <button class="btn btn-info" (click)="autolayout()">Autolayout</button>
+      <button class="btn btn-success" (click)="saveProject()">Guardar</button>
       <button class="btn" (click)="logJson()">Ver JSON</button>
       <!-- Botón Exportar con menú -->
         <div class="relative" (mouseleave)="showExportMenu=false">
@@ -19,8 +25,8 @@
                 <button class="w-full text-left px-4 py-2 hover:bg-gray-50 dark:hover:bg-slate-700"
                         (click)="exportImage('SVG'); showExportMenu=false">Imagen SVG</button>
                 <div class="border-t border-gray-200 dark:border-slate-700 my-1"></div>
-                <!-- <button class="w-full text-left px-4 py-2 hover:bg-gray-50 dark:hover:bg-slate-700"
-                        (click)="exportSpringBootZip(); showExportMenu=false">Spring Boot (.zip)</button> -->
+                <button class="w-full text-left px-4 py-2 hover:bg-gray-50 dark:hover:bg-slate-700"
+                        (click)="exportToSpringBoot(); showExportMenu=false">Spring Boot (.zip)</button>
             </div>
         </div>
       <button class="btn btn-danger" (click)="closeEditor()">Cerrar</button>
@@ -59,9 +65,24 @@
         [nodes]="nodes" [connectors]="connectors"
         (created)="created()"
         (dragEnter)="dragEnter($event)"
-        (selectionChange)="onSelectionChange($event)">
+        (selectionChange)="onSelectionChange($event)"
+        (collectionChange)="onDiagramChange($event)"
+        (propertyChange)="onDiagramChange($event)"
+        (positionChange)="onDiagramChange($event)"
+        (rotateChange)="onDiagramChange($event)"
+        (sizeChange)="onDiagramChange($event)"
+        (connectionChange)="onDiagramChange($event)"
+        (sourcePointChange)="onDiagramChange($event)"
+        (targetPointChange)="onDiagramChange($event)"
+        (textEdit)="onDiagramChange($event)">
       </ejs-diagram>
       <!-- <ejs-overview id="overview" sourceID="diagram" style="width:300px;height:180px"></ejs-overview> -->
     </div>
   </div>
 </div>
+
+<!-- Diálogo para cambios sin guardar -->
+<app-unsaved-changes-dialog 
+  [(visible)]="showUnsavedDialog"
+  (result)="onUnsavedChangesResult($event)"
+></app-unsaved-changes-dialog>
