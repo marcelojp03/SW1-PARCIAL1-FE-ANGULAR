@@ -1,0 +1,130 @@
+<div class="ai-chat-container" [class.expanded]="isExpanded">
+  <!-- Header -->
+  <div class="chat-header" (click)="toggleChat()">
+    <div class="header-content">
+      <i class="pi pi-sparkles"></i>
+      <span class="header-title">AI Diagram Assistant</span>
+      <span class="status-indicator" [class.online]="true">●</span>
+    </div>
+    <i class="pi" [class.pi-chevron-up]="isExpanded" [class.pi-chevron-down]="!isExpanded"></i>
+  </div>
+
+  <!-- Chat Content -->
+  <div class="chat-content" *ngIf="isExpanded">
+    <!-- Messages Area -->
+    <div class="messages-container">
+      <p-scrollPanel [style]="{'width': '100%', 'height': '300px'}" styleClass="custom-scrollbar">
+        <div class="messages-list">
+          <!-- Welcome Message -->
+          <div class="message ai-message" *ngIf="messages.length === 0">
+            <div class="message-avatar">
+              <p-avatar icon="pi pi-sparkles" shape="circle" [style]="{'background-color': '#6366f1', 'color': '#ffffff'}"></p-avatar>
+            </div>
+            <div class="message-content">
+              <div class="message-text">
+                ¡Hola! Soy tu asistente de diagramas UML con IA. Puedes describir en lenguaje natural lo que necesitas:
+                <ul>
+                  <li><strong>Crear entidades:</strong> "Crea Usuario(id INT, nombre STRING)"</li>
+                  <li><strong>Agregar relaciones:</strong> "Relaciona Usuario 1..* Pedido"</li>
+                  <li><strong>Sistemas completos:</strong> "Crea un sistema de e-commerce"</li>
+                  <li><strong>Modificaciones:</strong> "Agrega email a la tabla Usuario"</li>
+                </ul>
+                ¡Describe lo que necesitas y lo crearé automáticamente!
+              </div>
+              <!-- <div class="quick-actions">
+                <p-chip 
+                  *ngFor="let suggestion of quickSuggestions" 
+                  [label]="suggestion" 
+                  (click)="selectSuggestion(suggestion)"
+                  styleClass="suggestion-chip">
+                </p-chip>
+              </div> -->
+            </div>
+          </div>
+
+          <!-- Chat Messages -->
+          <div *ngFor="let message of messages" class="message" [class.user-message]="message.sender === 'user'" [class.ai-message]="message.sender === 'ai'">
+            <div class="message-avatar">
+              <p-avatar 
+                *ngIf="message.sender === 'user'" 
+                icon="pi pi-user" 
+                shape="circle" 
+                [style]="{'background-color': '#10b981', 'color': '#ffffff'}">
+              </p-avatar>
+              <p-avatar 
+                *ngIf="message.sender === 'ai'" 
+                icon="pi pi-sparkles" 
+                shape="circle" 
+                [style]="{'background-color': '#6366f1', 'color': '#ffffff'}">
+              </p-avatar>
+            </div>
+            <div class="message-content">
+              <div class="message-text">{{ message.content }}</div>
+              <div class="message-timestamp">{{ formatTime(message.timestamp) }}</div>
+              
+              <!-- Action Suggestions -->
+              <!-- <div class="action-suggestions" *ngIf="message.suggestions && message.suggestions.length > 0">
+                <p-chip 
+                  *ngFor="let suggestion of message.suggestions" 
+                  [label]="suggestion" 
+                  (click)="selectSuggestion(suggestion)"
+                  styleClass="suggestion-chip">
+                </p-chip>
+              </div> -->
+
+              <!-- Action Button -->
+              <!-- <div class="action-button" *ngIf="message.action">
+                <p-button 
+                  [label]="getActionButtonText(message.action.type)" 
+                  icon="pi pi-plus" 
+                  size="small"
+                  (click)="executeAction(message.action)"
+                  styleClass="p-button-outlined p-button-sm">
+                </p-button>
+              </div> -->
+
+            </div>
+          </div>
+
+          <!-- Loading Message -->
+          <div class="message ai-message" *ngIf="isLoading">
+            <div class="message-avatar">
+              <p-avatar icon="pi pi-sparkles" shape="circle" [style]="{'background-color': '#6366f1', 'color': '#ffffff'}"></p-avatar>
+            </div>
+            <div class="message-content">
+              <div class="loading-content">
+                <p-progressSpinner [style]="{'width': '20px', 'height': '20px'}" strokeWidth="4"></p-progressSpinner>
+                <span>Procesando tu solicitud...</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </p-scrollPanel>
+    </div>
+
+    <!-- Input Area -->
+    <div class="chat-input-area">
+      <div class="input-container">
+        <textarea
+          pTextarea
+          [(ngModel)]="currentMessage"
+          placeholder="Describe lo que quieres crear en tu diagrama..."
+          [rows]="2"
+          [autoResize]="true"
+          (keydown)="handleEnter($event)"
+          class="chat-input"
+          [disabled]="isLoading">
+        </textarea>
+        <p-button 
+          icon="pi pi-send" 
+          (click)="sendMessage()"
+          [disabled]="!currentMessage.trim() || isLoading"
+          styleClass="p-button-rounded send-button">
+        </p-button>
+      </div>
+      <div class="input-help">
+        <small>Presiona Enter para enviar, Shift+Enter para nueva línea</small>
+      </div>
+    </div>
+  </div>
+</div>

@@ -1,13 +1,14 @@
 // dashboard/components/uml-editor/uml-editor.component.ts
-import { Component, ViewChild, OnInit, OnDestroy, ViewEncapsulation } from '@angular/core';
+import { Component, ViewChild, OnInit, OnDestroy, AfterViewInit, ViewEncapsulation } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 import { SharedModule } from '../../../shared/shared.module';
 import { SyncfusionService } from '../../../shared/services/syncfusion.service';
 import { ProjectService } from '../../../shared/services/project.service';
-import { MessageService, ConfirmationService } from 'primeng/api';
+import { MessageService, ConfirmationService, MenuItem } from 'primeng/api';
 import { ActivatedRoute } from '@angular/router';
 import { UnsavedChangesDialog, UnsavedChangesResult } from '../unsaved-changes-dialog/unsaved-changes-dialog.component';
+import { AiChatComponent } from '../ai-chat/ai-chat.component';
 import { 
     DiagramComponent, 
     SymbolPaletteComponent,
@@ -29,12 +30,14 @@ import {
     HierarchicalTreeService 
 } from '@syncfusion/ej2-angular-diagrams';
 import { ExpandMode } from '@syncfusion/ej2-navigations';
-import type { Selector } from '@syncfusion/ej2-diagrams'; 
+import type { Selector } from '@syncfusion/ej2-diagrams';
+import { CUSTOM_ELEMENTS_SCHEMA } from '@angular/core';
 
 @Component({
   selector: 'app-uml-editor',
   standalone: true,
-  imports: [CommonModule, SharedModule, UnsavedChangesDialog],
+  imports: [CommonModule, SharedModule, UnsavedChangesDialog, AiChatComponent],
+  schemas: [CUSTOM_ELEMENTS_SCHEMA],
   providers: [
     DiagramContextMenuService,
     PrintAndExportService,
@@ -49,18 +52,24 @@ import type { Selector } from '@syncfusion/ej2-diagrams';
   templateUrl: './uml-editor.component.html',
   styleUrl: './uml-editor.component.scss'
 })
-export class UmlEditorComponent implements OnInit, OnDestroy {
+export class UmlEditorComponent implements OnInit, AfterViewInit, OnDestroy {
   @ViewChild('diagram') diagram!: DiagramComponent;
   @ViewChild('symbolpalette') symbolPalette!: SymbolPaletteComponent;
 
   public layout: LayoutModel = { type: 'HierarchicalTree', orientation: 'TopToBottom' };
   
   // ID del proyecto actual
-  private projectId: string = '';
+  public projectId: string = '';
+
+  // Información del proyecto
+  public project: any;
   
   // Estado de guardado
   public hasUnsavedChanges: boolean = false;
   public showUnsavedDialog: boolean = false;
+  
+  // Menú de exportación
+  public exportMenuItems: MenuItem[] = [];
 
   public created(): void {
     this.diagram.layout = this.layout;
@@ -379,16 +388,54 @@ export class UmlEditorComponent implements OnInit, OnDestroy {
   ngOnInit() {
     console.log('UML Editor initialized with official Syncfusion structure');
     
+    // Inicializar menú de exportación
+    this.initializeExportMenu();
+    
     // Obtener ID del proyecto desde la ruta
     this.route.params.subscribe(params => {
       this.projectId = params['id'];
       if (this.projectId) {
+        this.loadProjectInfo();
         this.loadProject();
       }
     });
 
     // Detectar cambios en el navegador (cerrar pestaña/ventana)
     window.addEventListener('beforeunload', this.onBeforeUnload.bind(this));
+  }
+
+  ngAfterViewInit() {
+    console.log('ngAfterViewInit - Diagram component ready');
+    // Asegurar que el diagrama esté completamente inicializado
+    setTimeout(() => {
+      if (this.diagram) {
+        console.log('Diagram component is available after view init');
+        this.diagram.fitToPage();
+      }
+    }, 500);
+  }
+
+  initializeExportMenu() {
+    this.exportMenuItems = [
+      {
+        label: 'Imagen PNG',
+        icon: 'pi pi-image',
+        command: () => this.exportImage('PNG')
+      },
+      {
+        label: 'Imagen SVG',
+        icon: 'pi pi-file',
+        command: () => this.exportImage('SVG')
+      },
+      {
+        separator: true
+      },
+      {
+        label: 'Spring Boot (.zip)',
+        icon: 'pi pi-download',
+        command: () => this.exportToSpringBoot()
+      }
+    ];
   }
 
   ngOnDestroy() {
@@ -409,15 +456,47 @@ export class UmlEditorComponent implements OnInit, OnDestroy {
   /**
    * Carga el proyecto y restaura el diagrama si existe
    */
-  private loadProject(): void {
-    this.projectService.restoreProject(this.projectId).subscribe({
+
+  private loadProjectInfo(): void {
+    this.projectService.getById(this.projectId).subscribe({
       next: (diagramData) => {
         if (diagramData && Object.keys(diagramData).length > 0) {
+          this.project = diagramData; // Guardar info del proyecto
           // Cargar el diagrama guardado
           setTimeout(() => {
             this.diagram.loadDiagram(JSON.stringify(diagramData));
             console.log('Diagram restored from server');
           }, 100);
+        } else {
+          console.log('No saved diagram found, starting fresh');
+        }
+      },
+      error: (error) => {
+        console.warn('Could not restore project, starting fresh:', error);
+        // No mostrar error al usuario, simplemente empezar con diagrama vacío
+      }
+    });
+  }
+  private loadProject(): void {
+    console.log('Starting loadProject for ID:', this.projectId);
+    this.projectService.restoreProject(this.projectId).subscribe({
+      next: (diagramData) => {
+        console.log('Received diagram data:', diagramData);
+        if (diagramData && Object.keys(diagramData).length > 0) {
+          // Cargar el diagrama guardado con más tiempo para asegurar que el DOM esté listo
+          setTimeout(() => {
+            if (this.diagram) {
+              console.log('Loading diagram with data:', JSON.stringify(diagramData));
+              this.diagram.loadDiagram(JSON.stringify(diagramData));
+              // Asegurar que el diagrama se muestre correctamente
+              setTimeout(() => {
+                this.diagram.fitToPage();
+                console.log('Diagram loaded and fitted to page');
+              }, 200);
+            } else {
+              console.error('Diagram component not available');
+            }
+          }, 300); // Aumentar el timeout
         } else {
           console.log('No saved diagram found, starting fresh');
         }
@@ -526,6 +605,260 @@ export class UmlEditorComponent implements OnInit, OnDestroy {
     const method = { name:'newMethod', type:'void', parameters:[{name:'p', type:'String'}] };
     this.diagram.addChildToUmlNode(node, method, 'Method');
     this.markAsChanged();
+  }
+
+  /**
+   * Maneja las acciones solicitadas por el AI Chat
+   */
+  handleAIAction(action: any): void {
+    console.log('AI Action received:', action);
+    
+    switch (action.type) {
+      case 'ai_update_diagram':
+        this.updateDiagramFromAI(action.data);
+        break;
+      default:
+        console.warn('Unknown AI action type:', action.type);
+    }
+  }
+
+  /**
+   * Actualiza el diagrama con los datos recibidos de la API de IA
+   */
+  private updateDiagramFromAI(data: any): void {
+    try {
+      if (data.syncfusion) {
+        console.log('Updating diagram with AI data:', data.syncfusion);
+        
+        // Cargar el diagrama actualizado
+        this.diagram.loadDiagram(JSON.stringify(data.syncfusion));
+        this.diagram.dataBind();
+        
+        // Marcar como modificado
+        this.markAsChanged();
+        
+        // Auto-layout opcional
+        setTimeout(() => {
+          this.autolayout();
+        }, 500);
+        
+        console.log('Diagram updated successfully from AI');
+      }
+    } catch (error) {
+      console.error('Error updating diagram from AI:', error);
+      this.messageService.add({
+        key: 'br',
+        severity: 'error',
+        summary: 'Error',
+        detail: 'No se pudo actualizar el diagrama',
+        life: 3000
+      });
+    }
+  }
+
+  /**
+   * Genera una clase basada en los datos del AI
+   */
+  private generateClassFromAI(classData: any): void {
+    const x = Math.random() * 400 + 100;
+    const y = Math.random() * 300 + 100;
+    
+    const newClass = this.createNode(
+      'AIClass_' + Date.now(), 
+      x, 
+      y, 
+      classData.name || 'AIGeneratedClass'
+    );
+
+    // Agregar la clase al diagrama
+    this.diagram.add(newClass);
+    
+    // Agregar atributos si existen
+    if (classData.attributes && classData.attributes.length > 0 && newClass.id) {
+      const node = this.diagram.getObject(newClass.id) as NodeModel;
+      classData.attributes.forEach((attr: string) => {
+        const [name, type] = attr.split(':').map(s => s.trim());
+        const attribute = { 
+          name: name || 'attribute', 
+          type: type || 'String',
+          scope: 'public'
+        };
+        this.diagram.addChildToUmlNode(node, attribute, 'Attribute');
+      });
+    }
+
+    // Agregar métodos si existen
+    if (classData.methods && classData.methods.length > 0 && newClass.id) {
+      const node = this.diagram.getObject(newClass.id) as NodeModel;
+      classData.methods.forEach((methodName: string) => {
+        const method = { 
+          name: methodName.replace('()', ''), 
+          type: 'void', 
+          parameters: []
+        };
+        this.diagram.addChildToUmlNode(node, method, 'Method');
+      });
+    }
+
+    this.markAsChanged();
+    
+    // Mostrar mensaje de éxito
+    this.messageService.add({
+      key: 'br',
+      severity: 'success',
+      summary: 'AI Assistant',
+      detail: `Clase "${classData.name}" creada exitosamente`,
+      life: 3000
+    });
+  }
+
+  /**
+   * Crea un diagrama completo basado en los datos del AI
+   */
+  private createDiagramFromAI(diagramData: any): void {
+    // Limpiar diagrama existente si es necesario
+    if (diagramData.clearExisting) {
+      this.diagram.clear();
+    }
+
+    const classes: NodeModel[] = [];
+    const spacing = 200;
+    let x = 100;
+    let y = 100;
+
+    // Crear clases
+    if (diagramData.classes) {
+      diagramData.classes.forEach((className: string, index: number) => {
+        const classNode = this.createNode(
+          'AIClass_' + className + '_' + Date.now(),
+          x + (index % 3) * spacing,
+          y + Math.floor(index / 3) * spacing,
+          className
+        );
+
+        // Agregar atributos predeterminados basados en el tipo
+        const defaultAttributes = this.getDefaultAttributesForClass(className);
+        classes.push(classNode);
+        this.diagram.add(classNode);
+
+        // Agregar atributos por defecto
+        if (classNode.id) {
+          const node = this.diagram.getObject(classNode.id) as NodeModel;
+          defaultAttributes.forEach(attr => {
+            this.diagram.addChildToUmlNode(node, attr, 'Attribute');
+          });
+        }
+      });
+    }
+
+    // Crear relaciones si se especifican
+    if (diagramData.relationships) {
+      setTimeout(() => {
+        diagramData.relationships.forEach((rel: string) => {
+          const [source, target] = rel.split('->').map(s => s.trim());
+          const sourceNode = classes.find(c => (c.shape as any)?.classShape?.name === source);
+          const targetNode = classes.find(c => (c.shape as any)?.classShape?.name === target);
+          
+          if (sourceNode && targetNode) {
+            const connector = this.createConnector(
+              'AIRel_' + Date.now(),
+              sourceNode.id!,
+              targetNode.id!
+            );
+            this.diagram.add(connector);
+          }
+        });
+      }, 100);
+    }
+
+    this.markAsChanged();
+    
+    // Aplicar auto layout después de crear todo
+    setTimeout(() => {
+      this.autolayout();
+    }, 200);
+
+    this.messageService.add({
+      key: 'br',
+      severity: 'success',
+      summary: 'AI Assistant',
+      detail: `Diagrama ${diagramData.type || 'completo'} generado exitosamente`,
+      life: 3000
+    });
+  }
+
+  /**
+   * Agrega una relación basada en los datos del AI
+   */
+  private addRelationshipFromAI(relationshipData: any): void {
+    // Esta función necesitaría más lógica para identificar las clases existentes
+    console.log('Adding relationship:', relationshipData);
+    
+    this.messageService.add({
+      key: 'br',
+      severity: 'info',
+      summary: 'AI Assistant',
+      detail: 'Función de relaciones en desarrollo',
+      life: 3000
+    });
+  }
+
+  /**
+   * Modifica un atributo basado en los datos del AI
+   */
+  private modifyAttributeFromAI(attributeData: any): void {
+    console.log('Modifying attribute:', attributeData);
+    
+    this.messageService.add({
+      key: 'br',
+      severity: 'info',
+      summary: 'AI Assistant',
+      detail: 'Función de modificación en desarrollo',
+      life: 3000
+    });
+  }
+
+  /**
+   * Obtiene atributos predeterminados para una clase basada en su nombre
+   */
+  private getDefaultAttributesForClass(className: string): any[] {
+    const lowerName = className.toLowerCase();
+    
+    if (lowerName.includes('user') || lowerName.includes('usuario')) {
+      return [
+        { name: 'id', type: 'String', scope: 'Private' },
+        { name: 'name', type: 'String', scope: 'Private' },
+        { name: 'email', type: 'String', scope: 'Private' },
+        { name: 'createdAt', type: 'Date', scope: 'Private' }
+      ];
+    } else if (lowerName.includes('product') || lowerName.includes('producto')) {
+      return [
+        { name: 'id', type: 'String', scope: 'Private' },
+        { name: 'name', type: 'String', scope: 'Private' },
+        { name: 'price', type: 'Double', scope: 'Private' },
+        { name: 'description', type: 'String', scope: 'Private' }
+      ];
+    } else if (lowerName.includes('order') || lowerName.includes('pedido')) {
+      return [
+        { name: 'id', type: 'String', scope: 'Private' },
+        { name: 'orderDate', type: 'Date', scope: 'Private' },
+        { name: 'total', type: 'Double', scope: 'Private' },
+        { name: 'status', type: 'String', scope: 'Private' }
+      ];
+    } else if (lowerName.includes('post') || lowerName.includes('blog')) {
+      return [
+        { name: 'id', type: 'String', scope: 'Private' },
+        { name: 'title', type: 'String', scope: 'Private' },
+        { name: 'content', type: 'String', scope: 'Private' },
+        { name: 'publishedAt', type: 'Date', scope: 'Private' }
+      ];
+    } else {
+      return [
+        { name: 'id', type: 'String', scope: 'Private' },
+        { name: 'name', type: 'String', scope: 'Private' },
+        { name: 'createdAt', type: 'Date', scope: 'Private' }
+      ];
+    }
   }
 
   /**

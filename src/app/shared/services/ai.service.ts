@@ -1,99 +1,68 @@
 import { Injectable } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
-import { Observable } from 'rxjs';
+import { HttpClient, HttpHeaders } from '@angular/common/http';
+import { Observable, firstValueFrom } from 'rxjs';
 import { environment } from '../../../environments/environment';
-
-export interface AiMessage {
-  id: string;
-  content: string;
-  sender: 'user' | 'ai';
-  timestamp: Date;
-  metadata?: {
-    confidence?: number;
-    suggestions?: any[];
-    context?: string;
-  };
-}
-
-export interface AiSuggestion {
-  id: string;
-  type: 'optimization' | 'correction' | 'enhancement';
-  title: string;
-  description: string;
-  confidence: number;
-  impact: 'low' | 'medium' | 'high';
-  changes: any[];
-}
+import { AuthService } from '../../core/services/auth.service';
+import { 
+  ChatMessage, 
+  DiagramAction, 
+  AiResponse, 
+  AiMessage, 
+  AiSuggestion,
+  AiChatRequest 
+} from '../interfaces/ai.interface';
 
 @Injectable({
   providedIn: 'root'
 })
 export class AiService {
-  private apiUrl = `${environment.backend.host}/ai`;
+  private apiUrl = environment.backend.host;
   
-  constructor(private http: HttpClient) {}
+  constructor(
+    private http: HttpClient,
+    private authService: AuthService
+  ) {}
 
-  sendMessage(projectId: string, message: string, context?: any): Observable<AiMessage> {
-    return this.http.post<AiMessage>(`${this.apiUrl}/chat/${projectId}`, {
-      message,
-      context
-    });
+   private getAuthHeaders(): HttpHeaders {
+    const session = localStorage.getItem('session');
+    if (session) {
+      const sessionData = JSON.parse(session);
+      const token = sessionData.data?.access_token;
+      if (token) {
+        return new HttpHeaders({
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        });
+      }
+    }
+    return new HttpHeaders({'Content-Type': 'application/json'});
+  }
+  // Chat functionality
+  async sendChatMessage(projectId: string, message: string): Promise<AiResponse> {
+    try {
+      const headers = this.getAuthHeaders();
+
+      const body = {
+        projectId: projectId,
+        message: message
+      };
+
+      const response = await firstValueFrom(
+        this.http.post<AiResponse>(`${this.apiUrl}/ai/chat`, body, { headers })
+      );
+
+      return response;
+    } catch (error) {
+      console.error('AI API Error:', error);
+      throw error;
+    }
   }
 
-  getChatHistory(projectId: string): Observable<AiMessage[]> {
-    return this.http.get<AiMessage[]>(`${this.apiUrl}/chat/${projectId}/history`);
-  }
-
-  analyzeDiagram(projectId: string): Observable<AiSuggestion[]> {
-    return this.http.post<AiSuggestion[]>(`${this.apiUrl}/analyze/${projectId}`, {});
-  }
-
-  generateClasses(projectId: string, description: string): Observable<any[]> {
-    return this.http.post<any[]>(`${this.apiUrl}/generate/classes/${projectId}`, {
-      description
-    });
-  }
-
-  optimizeDiagram(projectId: string, criteria: string[]): Observable<any> {
-    return this.http.post<any>(`${this.apiUrl}/optimize/${projectId}`, {
-      criteria
-    });
-  }
-
-  explainElement(projectId: string, elementId: string, elementType: 'class' | 'relation'): Observable<string> {
-    return this.http.post<string>(`${this.apiUrl}/explain/${projectId}`, {
-      elementId,
-      elementType
-    });
-  }
-
-  generateSQL(projectId: string, database: 'mysql' | 'postgresql' | 'sqlite'): Observable<string> {
-    return this.http.post<string>(`${this.apiUrl}/generate/sql/${projectId}`, {
-      database
-    });
-  }
-
-  validateNamingConventions(projectId: string, convention: string): Observable<any[]> {
-    return this.http.post<any[]>(`${this.apiUrl}/validate/naming/${projectId}`, {
-      convention
-    });
-  }
-
-  suggestIndexes(projectId: string): Observable<any[]> {
-    return this.http.post<any[]>(`${this.apiUrl}/suggest/indexes/${projectId}`, {});
-  }
 
   // Helper methods para la UI
-  formatAiResponse(response: string): string {
-    // Formatear respuesta de IA con markdown básico
-    return response
-      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-      .replace(/\*(.*?)\*/g, '<em>$1</em>')
-      .replace(/`(.*?)`/g, '<code>$1</code>')
-      .replace(/\n/g, '<br>');
-  }
+  
 
-  createUserMessage(content: string): AiMessage {
+  createUserMessage(content: string): ChatMessage {
     return {
       id: this.generateId(),
       content,
@@ -102,7 +71,33 @@ export class AiService {
     };
   }
 
-  private generateId(): string {
+  createAiMessage(content: string, suggestions?: string[]): ChatMessage {
+    return {
+      id: this.generateId(),
+      content,
+      sender: 'ai',
+      timestamp: new Date(),
+      suggestions
+    };
+  }
+
+  getErrorMessage(error: any): string {
+    let errorMessage = 'No se pudo procesar la solicitud';
+    
+    if (error.status === 422) {
+      errorMessage = 'No se pudo interpretar la solicitud. Intenta ser más específico.';
+    } else if (error.status === 404) {
+      errorMessage = 'Proyecto no encontrado';
+    } else if (error.status === 403) {
+      errorMessage = 'No tienes permisos para modificar este proyecto';
+    } else if (error.error?.message) {
+      errorMessage = error.error.message;
+    }
+
+    return errorMessage;
+  }
+
+  generateId(): string {
     return Math.random().toString(36).substr(2, 9);
   }
 }

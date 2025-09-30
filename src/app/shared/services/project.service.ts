@@ -16,6 +16,8 @@ export interface Project {
   owner_id?: string;
   isShared: boolean;
   diagrams?: any[];
+  has_thumbnail?: boolean;
+  thumbnail_data_uri?: string;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -48,7 +50,9 @@ export class ProjectService {
       createdAt: new Date('2024-01-15'),
       updatedAt: new Date('2024-01-20'),
       owner: 'Usuario Test',
-      isShared: false
+      isShared: false,
+      has_thumbnail: true,
+      thumbnail_data_uri: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjEyMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMjAwIiBoZWlnaHQ9IjEyMCIgZmlsbD0iIzQzODVmNCIvPjx0ZXh0IHg9IjEwMCIgeT0iNjAiIGZpbGw9IndoaXRlIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBkeT0iLjNlbSIgZm9udC1mYW1pbHk9InNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iMTQiPkludmVudGFyaW88L3RleHQ+PC9zdmc+'
     },
     {
       id: '2', 
@@ -57,7 +61,9 @@ export class ProjectService {
       createdAt: new Date('2024-01-10'),
       updatedAt: new Date('2024-01-18'),
       owner: 'Usuario Test',
-      isShared: true
+      isShared: true,
+      has_thumbnail: true,
+      thumbnail_data_uri: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjEyMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMjAwIiBoZWlnaHQ9IjEyMCIgZmlsbD0iIzEwYjk4MSIvPjx0ZXh0IHg9IjEwMCIgeT0iNjAiIGZpbGw9IndoaXRlIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBkeT0iLjNlbSIgZm9udC1mYW1pbHk9InNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iMTQiPkUtY29tbWVyY2U8L3RleHQ+PC9zdmc+'
     },
     {
       id: '3',
@@ -66,7 +72,9 @@ export class ProjectService {
       createdAt: new Date('2024-01-05'),
       updatedAt: new Date('2024-01-12'),
       owner: 'Usuario Test',
-      isShared: false
+      isShared: false,
+      has_thumbnail: false,
+      thumbnail_data_uri: undefined
     },
     {
       id: '4',
@@ -75,7 +83,9 @@ export class ProjectService {
       createdAt: new Date('2024-01-01'),
       updatedAt: new Date('2024-01-08'),
       owner: 'Usuario Test',
-      isShared: true
+      isShared: true,
+      has_thumbnail: true,
+      thumbnail_data_uri: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjEyMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMjAwIiBoZWlnaHQ9IjEyMCIgZmlsbD0iIzk5MzNlYSIvPjx0ZXh0IHg9IjEwMCIgeT0iNjAiIGZpbGw9IndoaXRlIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBkeT0iLjNlbSIgZm9udC1mYW1pbHk9InNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iMTQiPkJsb2c8L3RleHQ+PC9zdmc+'
     }
   ];
 
@@ -95,7 +105,7 @@ export class ProjectService {
     console.log('[ProjectService] Auth headers:', headers.get('Authorization') ? 'Present' : 'Missing');
     
     return this.http.get<any>(`${this.apiUrl}/projects`, { headers }).pipe(
-      map(response => {
+      map((response:any) => {
         console.log('[ProjectService] Projects API response:', response);
         if (response.success && response.data) {
           const mappedProjects = response.data.map((project: any) => ({
@@ -107,7 +117,9 @@ export class ProjectService {
             owner: project.owner?.name || 'Usuario',
             owner_id: project.owner_id,
             isShared: false, // Por ahora no tenemos info de compartido
-            diagrams: project.diagrams || []
+            diagrams: project.diagrams || [],
+            has_thumbnail: project.has_thumbnail || false,
+            thumbnail_data_uri: project.thumbnail_data_uri || null
           }));
           console.log('[ProjectService] Mapped projects:', mappedProjects);
           return mappedProjects;
@@ -258,12 +270,36 @@ export class ProjectService {
   }
 
   delete(id: string): Observable<boolean> {
-    const index = this.mockProjects.findIndex(p => p.id === id);
-    if (index >= 0) {
-      this.mockProjects.splice(index, 1);
-      return of(true).pipe(delay(200));
+    // Si skipAuth está habilitado, usar datos simulados
+    if (environment.skipAuth) {
+      const index = this.mockProjects.findIndex(p => p.id === id);
+      if (index >= 0) {
+        this.mockProjects.splice(index, 1);
+        return of(true).pipe(delay(200));
+      }
+      return of(false);
     }
-    return of(false);
+
+    // Usar API real
+    const headers = this.getAuthHeaders();
+    console.log(`[ProjectService] Deleting project ${id}`);
+    console.log('[ProjectService] Request URL:', `${this.apiUrl}/api/projects/${id}`);
+    console.log('[ProjectService] Auth headers:', headers.get('Authorization') ? 'Present' : 'Missing');
+    
+    return this.http.delete<any>(`${this.apiUrl}/api/projects/${id}`, { headers }).pipe(
+      map(response => {
+        console.log('[ProjectService] Delete response:', response);
+        if (response && response.success) {
+          return true;
+        }
+        throw new Error('Error deleting project');
+      }),
+      catchError(error => {
+        console.error('[ProjectService] Error deleting project:', error);
+        console.error('[ProjectService] Error details:', error.error);
+        throw error;
+      })
+    );
   }
 
   // ===== MÉTODOS ESPECÍFICOS PARA SYNCFUSION =====
@@ -381,13 +417,14 @@ export class ProjectService {
 
   /**
    * Exporta el proyecto a Spring Boot
-   * POST /api/projects/{id}/export/springboot
+   * POST /api/export/projects/{id}/springboot
    */
   exportToSpringBoot(projectId: string): Observable<Blob> {
     const headers = this.getAuthHeaders();
     console.log(`[ProjectService] Exporting project ${projectId} to Spring Boot`);
+    console.log(`[ProjectService] Using endpoint: ${environment.backend.host}/export/projects/${projectId}/springboot`);
     
-    return this.http.post(`${this.apiUrl}/projects/${projectId}/export/springboot`, {}, { 
+    return this.http.post(`${environment.backend.host}/export/projects/${projectId}/springboot`, {}, { 
       headers, 
       responseType: 'blob' 
     }).pipe(

@@ -6,7 +6,7 @@ import { NewProjectDialog } from '../new-project-dialog/new-project-dialog.compo
 import { EditProjectDialog } from '../edit-project-dialog/edit-project-dialog.component';
 import { ProjectService, Project } from '../../../shared/services/project.service';
 import { SharedModule } from '../../../shared/shared.module';
-import { MessageService } from 'primeng/api';
+import { MessageService, ConfirmationService } from 'primeng/api';
 
 @Component({
   selector: 'dashboard-projects-page',
@@ -14,7 +14,7 @@ import { MessageService } from 'primeng/api';
   imports: [SharedModule, NewProjectDialog, EditProjectDialog],
   templateUrl: './projects-page.component.html',
   styleUrl: './projects-page.component.scss',
-  providers: [MessageService]
+  providers: [MessageService, ConfirmationService]
 })
 export class ProjectsPage implements OnInit {
   projects: Project[] = [];
@@ -23,11 +23,14 @@ export class ProjectsPage implements OnInit {
   showEditDialog = false;
   selectedProject: Project | null = null;
   loading = false;
+  openingProject: string | null = null; // ID del proyecto que se está abriendo
+  deletingProject: string | null = null; // ID del proyecto que se está eliminando
 
   constructor(
     private ps: ProjectService,
     private router: Router,
-    private messageService: MessageService
+    private messageService: MessageService,
+    private confirmationService: ConfirmationService
   ) {}
 
   ngOnInit() {
@@ -37,6 +40,11 @@ export class ProjectsPage implements OnInit {
   load() {
     this.loading = true;
     this.ps.list().subscribe((projects: Project[]) => {
+      console.log('[ProjectsPage] Received projects:', projects);
+      // Log thumbnail info for debugging
+      projects.forEach(project => {
+        console.log(`[ProjectsPage] Project "${project.name}": has_thumbnail=${project.has_thumbnail}, thumbnail_data_uri=${project.thumbnail_data_uri ? 'present' : 'null'}`);
+      });
       this.projects = projects || [];
       this.loading = false;
     });
@@ -75,8 +83,11 @@ export class ProjectsPage implements OnInit {
   }
 
   openProject(project: Project) {
-    //this.router.navigate(['/editor', project.id]);
-    this.router.navigate(['/p', project.id]);
+    this.openingProject = project.id;
+    // Pequeño delay para mostrar el spinner
+    setTimeout(() => {
+      this.router.navigate(['/p', project.id]);
+    }, 300);
   }
 
   editProject(project: Project, event?: Event) {
@@ -109,6 +120,109 @@ export class ProjectsPage implements OnInit {
           summary: 'Error',
           detail: 'No se pudo actualizar el proyecto. Inténtalo de nuevo.',
           life: 5000
+        });
+      }
+    });
+  }
+
+  deleteProject(project: Project, event: Event) {
+    event.stopPropagation(); // Evitar que se abra el proyecto
+    
+    // Confirmar eliminación con diálogo elegante
+    this.confirmationService.confirm({
+      message: `¿Estás seguro de que quieres eliminar el proyecto "${project.name}"? Esta acción no se puede deshacer.`,
+      header: 'Confirmar Eliminación',
+      icon: 'pi pi-exclamation-triangle',
+      acceptLabel: 'Sí, eliminar',
+      rejectLabel: 'Cancelar',
+      acceptButtonStyleClass: 'p-button-danger',
+      accept: () => {
+        this.deletingProject = project.id;
+        
+        this.ps.delete(project.id).subscribe({
+          next: () => {
+            this.deletingProject = null;
+            this.load(); // Recargar la lista
+            this.messageService.add({
+              severity: 'success',
+              summary: 'Proyecto eliminado',
+              detail: `El proyecto "${project.name}" fue eliminado exitosamente`,
+              life: 3000
+            });
+          },
+          error: (error) => {
+            this.deletingProject = null;
+            console.error('Error deleting project:', error);
+            this.messageService.add({
+              severity: 'error',
+              summary: 'Error',
+              detail: 'No se pudo eliminar el proyecto. Inténtalo de nuevo.',
+              life: 5000
+            });
+          }
+        });
+      }
+    });
+  }
+
+  getProjectMenuItems(project: Project) {
+    return [
+      {
+        label: 'Abrir',
+        icon: 'pi pi-external-link',
+        command: () => this.openProject(project)
+      },
+      {
+        label: 'Editar',
+        icon: 'pi pi-pencil',
+        command: () => this.editProject(project)
+      },
+      {
+        separator: true
+      },
+      {
+        label: 'Eliminar',
+        icon: 'pi pi-trash',
+        styleClass: 'text-red-600',
+        command: () => this.deleteProjectFromMenu(project),
+        disabled: this.deletingProject === project.id
+      }
+    ];
+  }
+
+  deleteProjectFromMenu(project: Project) {
+    // Método específico para eliminación desde el menú (sin event.stopPropagation)
+    this.confirmationService.confirm({
+      message: `¿Estás seguro de que quieres eliminar el proyecto "${project.name}"? Esta acción no se puede deshacer.`,
+      header: 'Confirmar Eliminación',
+      icon: 'pi pi-exclamation-triangle',
+      acceptLabel: 'Sí, eliminar',
+      rejectLabel: 'Cancelar',
+      acceptButtonStyleClass: 'p-button-danger',
+      accept: () => {
+        this.deletingProject = project.id;
+        
+        this.ps.delete(project.id).subscribe({
+          next: () => {
+            this.deletingProject = null;
+            this.load(); // Recargar la lista
+            this.messageService.add({
+              severity: 'success',
+              summary: 'Proyecto eliminado',
+              detail: `El proyecto "${project.name}" fue eliminado exitosamente`,
+              life: 3000
+            });
+          },
+          error: (error) => {
+            this.deletingProject = null;
+            console.error('Error deleting project:', error);
+            this.messageService.add({
+              severity: 'error',
+              summary: 'Error',
+              detail: 'No se pudo eliminar el proyecto. Inténtalo de nuevo.',
+              life: 5000
+            });
+          }
         });
       }
     });

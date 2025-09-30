@@ -6,7 +6,7 @@
   <div class="uml-header bg-white dark:bg-slate-900 border-b border-gray-200 dark:border-slate-700">
     <div class="flex items-center gap-2">
       <h2 class="text-lg font-semibold flex-1 text-slate-900 dark:text-slate-100">
-        Editor de Diagramas de Clase UML
+        {{project?.name}}
         <span *ngIf="hasUnsavedChanges" class="ml-2 text-orange-500 text-sm">● Cambios no guardados</span>
       </h2>
       <button class="btn btn-primary" (click)="addNewClass()">+ Clase</button>
@@ -15,20 +15,24 @@
       <button class="btn btn-info" (click)="autolayout()">Autolayout</button>
       <button class="btn btn-success" (click)="saveProject()">Guardar</button>
       <button class="btn" (click)="logJson()">Ver JSON</button>
-      <!-- Botón Exportar con menú -->
-        <div class="relative" (mouseleave)="showExportMenu=false">
-            <button class="btn btn-info" (click)="showExportMenu = !showExportMenu">Exportar ▾</button>
-            <div *ngIf="showExportMenu"
-                class="absolute right-0 mt-2 w-56 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg shadow z-50">
-                <button class="w-full text-left px-4 py-2 hover:bg-gray-50 dark:hover:bg-slate-700"
-                        (click)="exportImage('PNG'); showExportMenu=false">Imagen PNG</button>
-                <button class="w-full text-left px-4 py-2 hover:bg-gray-50 dark:hover:bg-slate-700"
-                        (click)="exportImage('SVG'); showExportMenu=false">Imagen SVG</button>
-                <div class="border-t border-gray-200 dark:border-slate-700 my-1"></div>
-                <button class="w-full text-left px-4 py-2 hover:bg-gray-50 dark:hover:bg-slate-700"
-                        (click)="exportToSpringBoot(); showExportMenu=false">Spring Boot (.zip)</button>
-            </div>
-        </div>
+      <!-- Botón Exportar con menú mejorado -->
+      <div class="relative">
+        <p-menu 
+          #exportMenu 
+          [popup]="true" 
+          [model]="exportMenuItems"
+          [appendTo]="'body'"
+          [baseZIndex]="1200"
+          styleClass="min-w-48"
+        ></p-menu>
+        <p-button 
+          label="Exportar" 
+          icon="pi pi-download" 
+          severity="info"
+          (onClick)="exportMenu.toggle($event)"
+          [text]="true"
+        ></p-button>
+      </div>
       <button class="btn btn-danger" (click)="closeEditor()">Cerrar</button>
     </div>
   </div>
@@ -86,3 +90,9 @@
   [(visible)]="showUnsavedDialog"
   (result)="onUnsavedChangesResult($event)"
 ></app-unsaved-changes-dialog>
+
+<!-- AI Chat Assistant -->
+<app-ai-chat 
+  [projectId]="projectId" 
+  (diagramAction)="handleAIAction($event)">
+</app-ai-chat>
